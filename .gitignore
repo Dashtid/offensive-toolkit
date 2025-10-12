@@ -1,0 +1,79 @@
+# Offensive Toolkit .gitignore
+
+# Credentials and sensitive data
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.txt
+passwords.txt
+hashes.txt
+*.db
+*.sqlite
+loot/
+
+# Configuration files with secrets
+config.yml
+config.json
+.env
+.env.*
+
+# Tool outputs
+*.pcap
+*.cap
+*.log
+logs/
+output/
+results/
+screenshots/
+captures/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Compiled binaries
+*.exe
+*.dll
+*.bin
+*.elf
+payloads/*.exe
+payloads/*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Metasploit
+.msf4/
+*.rc
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Report drafts (keep templates)
+reports/*.pdf
+reports/*.docx
+reports/*.html
+
+# Exclude actual exploits/payloads from version control
+exploits/live/
+payloads/live/
