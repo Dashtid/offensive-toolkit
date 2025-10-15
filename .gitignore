@@ -1,32 +1,6 @@
-# Offensive Toolkit .gitignore
+# Offensive Security Toolkit - .gitignore
 
-# Credentials and sensitive data
-*.key
-*.pem
-*.p12
-*.pfx
-credentials.txt
-passwords.txt
-hashes.txt
-*.db
-*.sqlite
-loot/
-
-# Configuration files with secrets
-config.yml
-config.json
-.env
-.env.*
-
-# Tool outputs
-*.pcap
-*.cap
-*.log
-logs/
-output/
-results/
-screenshots/
-captures/
+# [!] CRITICAL: Never commit credentials, API keys, or sensitive data
 
 # Python
 __pycache__/
@@ -34,46 +8,231 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
 venv/
 env/
-*.egg-info/
-dist/
-build/
+ENV/
+env.bak/
+venv.bak/
 
-# Compiled binaries
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Logs and Output
+logs/
+*.log
+output/
+results/
+screenshots/
+captures/
+
+# Configuration (SECURITY CRITICAL)
+config/*.yaml
+config/*.yml
+config/*.json
+config/*.ini
+config/*.conf
+!config/config.yaml.example
+!config/config.template.yaml
+
+# Credentials and Secrets (NEVER COMMIT)
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.keystore
+*.jks
+secrets/
+credentials/
+credentials.txt
+passwords.txt
+hashes.txt
+loot/
+.env
+.env.*
+*.env
+
+# API Keys and Tokens
+*api_key*
+*api_token*
+*access_token*
+*secret_key*
+apikeys.txt
+tokens.txt
+
+# Target Lists (may contain sensitive info)
+config/authorized_targets.txt
+config/targets.txt
+targets/
+scope/
+
+# Exploit Development
+payloads/compiled/
+payloads/*.exe
+payloads/*.dll
 *.exe
 *.dll
 *.bin
 *.elf
-payloads/*.exe
-payloads/*.dll
+shellcode/compiled/
+exploits/live/
+payloads/live/
 
-# OS files
-.DS_Store
-Thumbs.db
+# Wordlists (large files)
+wordlists/
+dictionaries/
+*.txt.gz
+rockyou.txt
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary Files
+*.tmp
+*.temp
 *.swp
 *.swo
 *~
+.DS_Store
+Thumbs.db
+tmp/
+temp/
 
-# IDE
-.vscode/
-.idea/
-*.sublime-*
+# Network Captures
+*.pcap
+*.pcapng
+*.cap
+
+# Reports (may contain sensitive findings)
+reports/*.html
+reports/*.pdf
+reports/*.docx
+!reports/template.*
+
+# Backups
+*.bak
+*.backup
+*.old
+
+# OS-specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Session Files
+*.session
+sessions/
+
+# Notes and Documentation (local only)
+NOTES.md
+TODO.local.md
+scratch/
+drafts/
+
+# Archive Files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# Compiled Binaries
+bin/compiled/
+compiled/
+
+# Cache directories
+.cache/
+cache/
 
 # Metasploit
 .msf4/
+.msf4.bak/
 *.rc
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# Burp Suite
+*.burp
 
-# Report drafts (keep templates)
-reports/*.pdf
-reports/*.docx
-reports/*.html
+# Browser Data (credential harvesting results)
+cookies/
+passwords/
+tokens/
+sessions/
 
-# Exclude actual exploits/payloads from version control
-exploits/live/
-payloads/live/
+# Memory Dumps
+*.dmp
+*.dump
+
+# SSH Keys
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+
+# Certificates
+*.csr
+*.der
+
+# Private Data
+private/
+confidential/
+internal/
+
+# Development
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# Documentation builds
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# IDE Files
+*.sublime-*
