@@ -70,14 +70,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - API reference and troubleshooting
     - CI/CD integration examples
 
-- **Post-Exploitation Tools** (MITRE TA0003):
-  - [+] persistence.py (900+ lines) - Windows + Linux persistence mechanisms
+- **Post-Exploitation Tools**:
+  - [+] persistence.py (900+ lines) - Windows + Linux persistence mechanisms (MITRE TA0003)
     - Windows: Scheduled tasks (T1053), registry run keys (T1547), startup folder, services
     - Linux: Cron jobs (T1053), systemd services, SSH authorized_keys, shell profiles
     - Check existing persistence mechanisms
     - Install persistence with automatic logging (.persistence_log.json)
     - Cleanup all installed persistence (ethical use support)
     - Cross-platform support with OS detection
+  - [+] privesc_windows.py (650+ lines) - Windows privilege escalation scanner (MITRE TA0004)
+    - Unquoted service paths detection (T1574.009)
+    - Weak service permissions with SDDL parsing (T1574.011)
+    - Registry autorun enumeration (T1547)
+    - AlwaysInstallElevated vulnerability check (T1548.002)
+    - Token privileges analysis (SeImpersonate, SeDebug, SeBackup) (T1134)
+    - Kernel exploit suggester (MS16-032, CVE-2021-1732, CVE-2023-21768) (T1068)
+  - [+] privesc_linux.py (600+ lines) - Linux privilege escalation scanner (MITRE TA0004)
+    - SUID/SGID binary scanning with GTFOBins detection (T1548.001)
+    - Sudo misconfigurations (NOPASSWD, dangerous commands) (T1548.003)
+    - Cron job weak permissions (T1053.003)
+    - Writable critical files (/etc/passwd, /etc/shadow) (T1068)
+    - Docker container escape detection (T1611)
+    - Kernel exploit suggester (Dirty COW, Dirty Pipe, DirtyPipe2) (T1068)
+  - [+] privesc_scanner.py (90+ lines) - Unified privilege escalation CLI
+    - Auto-detects OS and runs appropriate scanner
+    - JSON output for DefectDojo integration
+  - [+] credential_dump.py (520+ lines) - Ethical credential harvesting (MITRE TA0006)
+    - Windows: Saved credentials (cmdkey), WiFi passwords (netsh), registry credentials (T1555)
+    - Linux: SSH private keys, bash history, config files, environment variables (T1552)
+    - Audit logging for all operations with timestamps
+    - Base64 obfuscation for sensitive data
+    - Explicit authorization confirmation required
+    - Restrictive file permissions (0600) on output (T1087)
+  - [+] lateral_movement.py (440+ lines) - Network lateral movement scanner (MITRE TA0008)
+    - Multi-protocol: SMB (445, 139), RDP (3389), SSH (22), WinRM (5985, 5986), WMI (135), VNC (5900+), Telnet (23) (T1021)
+    - SMB share enumeration (Windows net view / Linux smbclient) (T1021.002)
+    - Banner grabbing for service identification
+    - Concurrent scanning with ThreadPoolExecutor
+    - CIDR range expansion for network scanning
+    - Vulnerability detection (EternalBlue, BlueKeep references) (T1570, T1550)
 
 ### Changed
 - Enhanced utils modules with comprehensive test coverage
@@ -216,12 +247,13 @@ Initial release - no upgrade path needed.
 
 ### Version 0.3.0 (Target: Q2 2026)
 - [ ] Port scanner with async support
-- [ ] Privilege escalation scanner
+- [X] Privilege escalation scanner (Windows + Linux)
 - [ ] Social engineering module
 - [ ] Credential testing framework
-- [ ] Lateral movement tools
+- [X] Lateral movement tools
 - [ ] Unit tests for reporting modules
 - [ ] Unit tests for post-exploitation modules
+- [ ] Post-exploitation documentation guide
 
 ### Version 0.4.0 (Target: Q3 2026)
 - [ ] Advanced persistence techniques
