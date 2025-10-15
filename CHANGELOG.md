@@ -70,6 +70,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - API reference and troubleshooting
     - CI/CD integration examples
 
+- **Cloud Security Tools** (MITRE TA0042, TA0007):
+  - [+] aws_scanner.py (600+ lines) - AWS security misconfiguration scanner
+    - IAM user and role analysis (MFA, access keys, admin policies) (T1087.004)
+    - S3 bucket public exposure and encryption (T1530)
+    - Security group overly permissive rules (T1046)
+    - EC2 instance security (IMDSv2, EBS encryption) (T1580, T1552.005)
+    - CloudTrail logging configuration (T1562.008)
+  - [+] azure_scanner.py (620+ lines) - Azure security misconfiguration scanner
+    - Storage account HTTPS enforcement and public blob access (T1530)
+    - Network Security Group (NSG) public access rules (T1046)
+    - Virtual machine public IPs and disk encryption (T1580)
+    - Public IP and DDoS protection analysis
+    - Managed disk encryption validation
+  - [+] gcp_scanner.py (650+ lines) - GCP security misconfiguration scanner
+    - GCS bucket public access and uniform bucket-level access (T1530)
+    - VPC firewall rules allowing 0.0.0.0/0 (T1046)
+    - Compute Engine instances with public IPs (T1580)
+    - Default service account usage detection (T1078.004)
+    - Persistent disk encryption (CMEK) validation
+  - [+] cloud_cli.py (270+ lines) - Unified multi-cloud scanner
+    - Parallel scanning of AWS, Azure, and GCP
+    - Unified findings format and aggregated metrics
+    - Cross-cloud security comparison
+
+- **API Security Tools** (MITRE T1190):
+  - [+] api_fuzzer.py (750+ lines) - OWASP API Security Top 10 2023 fuzzer
+    - API1:2023 - BOLA/IDOR detection (horizontal privilege escalation)
+    - API2:2023 - Broken authentication testing (rate limiting, weak passwords, JWT)
+    - API3:2023 - Excessive data exposure detection (sensitive field analysis)
+    - API4:2023 - Unrestricted resource consumption (rate limiting tests)
+    - API5:2023 - BFLA detection (function-level authorization bypass)
+    - API7:2023 - SSRF testing (internal resource access, metadata endpoints)
+    - API8:2023 - Security misconfiguration (missing headers, CORS, verbose errors)
+  - [+] graphql_scanner.py (520+ lines) - GraphQL security scanner
+    - Introspection query testing (schema disclosure)
+    - Query depth attack detection (nested queries DoS) (T1499)
+    - Batch query abuse testing (query batching DoS)
+    - Alias-based DoS attacks (resource exhaustion)
+    - Field suggestion enumeration (typo-based discovery)
+    - Verbose error message detection (information disclosure)
+
 - **Post-Exploitation Tools**:
   - [+] persistence.py (900+ lines) - Windows + Linux persistence mechanisms (MITRE TA0003)
     - Windows: Scheduled tasks (T1053), registry run keys (T1547), startup folder, services
@@ -245,22 +286,28 @@ Initial release - no upgrade path needed.
 
 **Status**: All major features complete! 🎉
 
-### Version 0.3.0 (Target: Q2 2026)
+### Version 0.3.0 (Target: Q2 2026) - IN PROGRESS
 - [ ] Port scanner with async support
 - [X] Privilege escalation scanner (Windows + Linux)
+- [X] Lateral movement tools
+- [X] Cloud security testing (AWS, Azure, GCP)
+- [X] API security testing framework (OWASP API Top 10 2023 + GraphQL)
 - [ ] Social engineering module
 - [ ] Credential testing framework
-- [X] Lateral movement tools
 - [ ] Unit tests for reporting modules
 - [ ] Unit tests for post-exploitation modules
 - [ ] Post-exploitation documentation guide
+- [ ] Cloud security documentation guide
+- [ ] API security documentation guide
+
+**Status**: Major cloud and API security features complete! 🎉
 
 ### Version 0.4.0 (Target: Q3 2026)
 - [ ] Advanced persistence techniques
-- [ ] Evasion techniques (AV/EDR bypass)
+- [ ] Evasion techniques (AMSI bypass, syscall injection, obfuscation)
+- [ ] AI/LLM security testing (OWASP LLM Top 10 2025, prompt injection)
 - [ ] Docker deployment
-- [ ] Cloud security testing (AWS, Azure)
-- [ ] API security testing framework
+- [ ] Wireless security testing
 
 ### Version 1.0.0 (Target: Q4 2026)
 - [ ] Complete MITRE ATT&CK coverage (50%+)
