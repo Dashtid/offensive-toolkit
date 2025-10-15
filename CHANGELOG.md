@@ -7,15 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Testing Infrastructure**:
+  - Full pytest framework with 70% coverage minimum
+  - 140+ unit tests for utils modules (logger, config, helpers)
+  - Unit tests for port scanner, directory bruteforcer, reverse shell
+  - Integration tests for reconnaissance workflow
+  - Integration tests for web security workflow
+  - GitHub Actions CI/CD pipeline (multi-OS, multi-Python version)
+  - Pre-commit hooks with black, flake8, bandit, mypy
+  - 30+ development dependencies in requirements-dev.txt
+  - Comprehensive testing documentation (docs/TESTING-GUIDE.md)
+
+- **Reconnaissance Tools** (MITRE TA0043):
+  - [+] DNS Resolver (T1590.002) - Multi-resolver DNS lookups with all record types
+  - [+] Subdomain Enumerator (T1590.001) - DNS brute-force + certificate transparency
+  - [+] WHOIS Lookup (T1590.001) - Domain intelligence gathering with parsing
+  - [+] Port Scanner (T1046) - Multi-threaded scanning with rate limiting (existing)
+
+- **Web Security Tools**:
+  - [+] SQL Injection Scanner (T1190) - Multiple injection types (union, boolean, time-based, error-based)
+  - [+] XSS Scanner (T1189) - Reflected, stored, and DOM-based XSS detection
+  - [+] Directory Bruteforcer (T1083) - Web path discovery (existing)
+
+- **Testing Features**:
+  - Shared pytest fixtures for mocking (socket, HTTP responses)
+  - Parametrized tests for comprehensive coverage
+  - Test data factories and sample results
+  - Code coverage reporting (HTML + terminal)
+  - Security scanning with Bandit in CI/CD
+  - Dependency safety checks in pipeline
+
+### Changed
+- Enhanced utils modules with comprehensive test coverage
+- Improved rate limiting implementation with token bucket algorithm
+- Updated configuration system with better environment variable support
+
 ### Planned
-- Port scanner with rate limiting
-- Web directory brute-forcer
-- Reverse shell generator
-- Report generation tool
 - OSINT collection tools
-- Vulnerability scanner integration
 - Social engineering templates
 - Credential testing tools
+- Advanced exploitation modules
+- Post-exploitation persistence tools
 
 ## [0.1.0] - 2025-10-15
 
@@ -129,11 +162,11 @@ Initial release - no upgrade path needed.
 ## Future Roadmap
 
 ### Version 0.2.0 (Target: Q1 2026)
-- [ ] Complete reconnaissance module with 5+ tools
+- [X] Complete reconnaissance module with 5+ tools (DNS, Subdomain, WHOIS, Port Scanner)
 - [ ] Port scanner with async support
-- [ ] Web security module with OWASP Top 10 tests
+- [X] Web security module with OWASP Top 10 tests (SQL Injection, XSS, Directory Traversal)
 - [ ] Basic reporting functionality
-- [ ] Integration tests
+- [X] Integration tests (reconnaissance + web security workflows)
 
 ### Version 0.3.0 (Target: Q2 2026)
 - [ ] Social engineering module
