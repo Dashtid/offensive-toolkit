@@ -1,0 +1,21 @@
+# Authorized Testing Targets
+# Copy this file to authorized_targets.txt and add your authorized targets
+#
+# [!] CRITICAL: Only add systems you have WRITTEN AUTHORIZATION to test
+#
+# Format Guidelines:
+# - One target per line
+# - CIDR notation for networks (e.g., 192.168.1.0/24)
+# - Individual IP addresses (e.g., 192.168.1.10)
+# - Domain names (e.g., testlab.example.com)
+# - Wildcard domains (e.g., *.testlab.example.com)
+# - Comments start with #
+
+# Example entries (REMOVE THESE IN PRODUCTION):
+# 192.168.1.0/24
+# 10.0.0.0/8
+# testlab.example.com
+# *.dev.example.com
+# 192.168.50.10
+
+# Your authorized targets below:

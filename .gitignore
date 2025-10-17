@@ -34,6 +34,13 @@ ENV/
 env.bak/
 venv.bak/
 
+# Virtual Environment Artifacts (Windows/Git Bash)
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+.Python
+
 # PyCharm
 .idea/
 *.iml

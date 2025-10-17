@@ -171,6 +171,38 @@ We follow PEP 8 with some modifications:
 # Use type hints for all function signatures
 ```
 
+### Naming Conventions
+
+**CRITICAL**: Follow these naming conventions strictly:
+
+**Module/Package Names** (Python code directories):
+- Use **underscores**, NEVER hyphens (hyphens break imports)
+- All lowercase: `reconnaissance`, `web_security`, `post_exploitation`
+- Examples: `api_security/`, `cloud_security/`, `payload_development/`
+
+**File Names** (Python files):
+- Use underscores for multi-word names
+- All lowercase: `port_scanner.py`, `dns_resolver.py`
+- Must be valid Python identifiers
+
+**Repository/Project Name**:
+- Can use hyphens: `offensive-toolkit`
+- This is the only place hyphens are acceptable
+
+**Why This Matters**:
+```python
+# This works:
+from web_security import sql_injection
+
+# This FAILS (hyphens are not valid in Python identifiers):
+from web-security import sql_injection  # SyntaxError!
+```
+
+**Common Mistakes to Avoid**:
+- ❌ `social-engineering/` → ✓ `social_engineering/`
+- ❌ `payload-development/` → ✓ `payload_development/`
+- ❌ `post-exploitation/` → ✓ `post_exploitation/`
+
 ### Code Formatting
 
 Use `black` for automatic formatting:

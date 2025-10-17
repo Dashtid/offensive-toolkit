@@ -1,0 +1,86 @@
+# Offensive Security Toolkit - Configuration Template
+# Copy this file to config.yaml and customize for your environment
+
+# Logging Configuration
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: logs/toolkit.log
+  format: "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# Rate Limiting (to avoid detection and service impact)
+rate_limit:
+  enabled: true
+  requests_per_second: 10
+  burst_size: 20
+
+# Timeout Settings
+timeouts:
+  connection: 10  # seconds
+  read: 30  # seconds
+  dns_resolution: 5  # seconds
+
+# Output Settings
+output:
+  directory: output
+  format: json  # json, csv, xml, html
+  timestamp_format: "%Y%m%d_%H%M%S"
+  save_raw_responses: false
+
+# Authorization and Safety
+authorization:
+  require_confirmation: true  # Prompt before executing scans
+  scope_file: config/authorized_targets.txt
+  verify_scope: true
+  log_all_attempts: true
+
+# Network Configuration
+network:
+  user_agent: "SecurityScanner/0.3.0"
+  follow_redirects: true
+  verify_ssl: true
+  max_redirects: 5
+  proxy: null  # Set to http://proxy:port if needed
+
+# Tool-Specific Settings
+reconnaissance:
+  dns_resolvers:
+    - 8.8.8.8
+    - 8.8.4.4
+    - 1.1.1.1
+  whois_timeout: 10
+  subdomain_wordlist: wordlists/subdomains.txt
+
+web_security:
+  max_threads: 10
+  wordlist_directory: wordlists/
+  default_wordlist: common.txt
+
+cloud_security:
+  aws:
+    regions: all  # or list: [us-east-1, us-west-2]
+    max_concurrent_checks: 5
+  azure:
+    max_concurrent_checks: 5
+  gcp:
+    max_concurrent_checks: 5
+
+api_security:
+  timeout: 30
+  max_payload_size: 1048576  # 1MB
+
+reporting:
+  defectdojo:
+    enabled: false
+    url: null  # https://defectdojo.example.com
+    api_key: null  # Set via environment variable DD_API_KEY
+    verify_ssl: true
+  format: html  # html, pdf, json, markdown
+  include_screenshots: false
+
+# Feature Flags
+features:
+  enable_auto_exploitation: false  # DANGER: Only for authorized testing
+  enable_persistence: false  # DANGER: Only for authorized testing
+  enable_lateral_movement: false  # DANGER: Only for authorized testing

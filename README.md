@@ -147,11 +147,18 @@ offensive-toolkit/
 │   └── POST-EXPLOITATION-GUIDE.md  # Post-exploitation guide
 │
 ├── config/              # Configuration files
-│   └── config.yaml      # Main configuration
+│   ├── config.yaml.template          # Configuration template
+│   ├── authorized_targets.txt.template  # Target list template
+│   └── README.md                      # Configuration guide
 │
 ├── tests/               # Test suite
-├── logs/                # Log files
-├── output/              # Tool output
+│   ├── unit/            # Unit tests
+│   ├── integration/     # Integration tests
+│   ├── fixtures/        # Test fixtures
+│   ├── conftest.py      # Pytest configuration
+│   └── README.md        # Testing guide
+├── logs/                # Log files (gitignored)
+├── output/              # Tool output (gitignored)
 ├── README.md            # This file
 ├── SECURITY.md          # Security policy
 ├── CONTRIBUTING.md      # Contribution guidelines
@@ -265,12 +272,12 @@ Discover hidden web paths on an authorized web application:
 
 ```bash
 # Basic directory brute-force
-python web-security/directory_bruteforcer.py \
+python web_security/directory_bruteforcer.py \
     --target https://testapp.example.com \
     --wordlist wordlists/common.txt
 
 # With custom rate limiting
-python web-security/directory_bruteforcer.py \
+python web_security/directory_bruteforcer.py \
     --target https://testapp.example.com \
     --wordlist wordlists/directories.txt \
     --rate-limit 5
