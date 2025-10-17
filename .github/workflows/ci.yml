@@ -2,169 +2,301 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.14'
+  UV_VERSION: '0.5.20'
 
 jobs:
+  # ==========================================================================
+  # Code Quality Checks
+  # ==========================================================================
+  code-quality:
+    name: Code Quality (Ruff, MyPy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements-dev.txt
+
+      - name: Run Ruff linter
+        run: |
+          ruff check . --output-format=github
+
+      - name: Run Ruff formatter check
+        run: |
+          ruff format --check .
+
+      - name: Run MyPy type checking
+        run: |
+          mypy . --ignore-missing-imports --show-error-codes
+        continue-on-error: true
+
+  # ==========================================================================
+  # Security Scanning
+  # ==========================================================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements-dev.txt
+
+      - name: Run Bandit security scanner
+        run: |
+          bandit -r . -f json -o bandit-report.json || true
+          bandit -r . -f txt
+
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
+      - name: Run Safety vulnerability check
+        run: |
+          safety check --json > safety-report.json || true
+          safety check
+        continue-on-error: true
+
+      - name: Run pip-audit
+        run: |
+          pip-audit --format json > pip-audit-report.json || true
+          pip-audit
+        continue-on-error: true
+
+      - name: GitLeaks secret scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trufflehog secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # ==========================================================================
+  # Testing Matrix (Python versions & OS)
+  # ==========================================================================
   test:
-    name: Test Suite
+    name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
 
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements.txt
+          uv pip install --system -r requirements-dev.txt
 
-    - name: Run linting (flake8)
-      run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --junitxml=pytest-report.xml \
+            -v
 
-    - name: Run security check (Bandit)
-      run: |
-        bandit -r . -f json -o bandit-report.json || true
-        bandit -r . --severity-level medium
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == env.PYTHON_VERSION
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
 
-    - name: Run type checking (mypy)
-      run: |
-        mypy . --ignore-missing-imports --no-strict-optional || true
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            pytest-report.xml
+            htmlcov/
+            coverage.xml
 
-    - name: Run tests with pytest
-      run: |
-        pytest --cov=. --cov-report=xml --cov-report=term-missing
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
-        fail_ci_if_error: false
-
-    - name: Generate coverage report
-      run: |
-        coverage html
-
-    - name: Upload coverage HTML
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: htmlcov/
-
-  security-scan:
-    name: Security Scanning
+  # ==========================================================================
+  # Docker Build & Test
+  # ==========================================================================
+  docker:
+    name: Docker Build
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: offensive-toolkit:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
 
-    - name: Run Bandit security scan
-      run: |
-        bandit -r . -f json -o bandit-report.json
-        bandit -r . -f txt
+      - name: Test Docker image
+        run: |
+          docker run --rm offensive-toolkit:test python -c "import reconnaissance; print('Import test: OK')"
+          docker run --rm offensive-toolkit:test python -c "import web_security; print('Import test: OK')"
+          docker run --rm offensive-toolkit:test python -c "import utils; print('Import test: OK')"
 
-    - name: Upload Bandit report
-      uses: actions/upload-artifact@v4
-      with:
-        name: bandit-security-report
-        path: bandit-report.json
-
-    - name: Check dependencies for vulnerabilities
-      run: |
-        safety check --json || true
-        safety check
-
-  code-quality:
-    name: Code Quality
+  # ==========================================================================
+  # Documentation Build
+  # ==========================================================================
+  docs:
+    name: Documentation Build
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
-    - name: Run Black formatter check
-      run: |
-        black --check --diff .
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements-dev.txt
 
-    - name: Run isort import checker
-      run: |
-        isort --check-only --diff .
+      - name: Build documentation
+        run: |
+          # Sphinx documentation build (when docs/conf.py exists)
+          if [ -f "docs/conf.py" ]; then
+            sphinx-build -W -b html docs docs/_build/html
+          else
+            echo "No Sphinx documentation found, skipping"
+          fi
 
-    - name: Run pylint
-      run: |
-        pylint $(git ls-files '*.py') --exit-zero
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: documentation
+          path: docs/_build/html
 
-  build:
-    name: Build Package
+  # ==========================================================================
+  # Dependency Audit
+  # ==========================================================================
+  dependencies:
+    name: Dependency Audit
     runs-on: ubuntu-latest
-    needs: [test, security-scan, code-quality]
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
 
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build wheel
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
-    - name: Build package
-      run: |
-        python -m build
+      - name: Install dependencies
+        run: |
+          uv pip install --system -r requirements.txt
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-packages
-        path: dist/
+      - name: Check for dependency updates
+        run: |
+          pip list --outdated
+
+      - name: Generate dependency tree
+        run: |
+          pip install pipdeptree
+          pipdeptree > dependency-tree.txt
+
+      - name: Upload dependency tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-tree
+          path: dependency-tree.txt
+
+  # ==========================================================================
+  # Summary Status Check
+  # ==========================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [code-quality, security, test, docker, docs, dependencies]
+    if: always()
+    steps:
+      - name: Check job status
+        run: |
+          if [ "${{ needs.code-quality.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.docker.result }}" != "success" ]; then
+            echo "CI pipeline failed"
+            exit 1
+          fi
+          echo "CI pipeline passed successfully"

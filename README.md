@@ -49,6 +49,31 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 .\venv\Scripts\Activate.ps1
 ```
 
+**With UV (Recommended - Faster):**
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
+git clone https://github.com/yourusername/offensive-toolkit.git
+cd offensive-toolkit
+uv venv
+source .venv/bin/activate  # Linux/Mac
+# OR: .venv\Scripts\activate  # Windows
+uv pip install -r requirements.txt
+```
+
+**Docker (Isolated Environment):**
+```bash
+# Build and run
+docker build -t offensive-toolkit .
+docker run --rm offensive-toolkit python reconnaissance/port_scanner.py --help
+
+# Or use docker-compose
+docker-compose up -d
+docker-compose run --rm toolkit python reconnaissance/port_scanner.py --target 192.168.1.1
+```
+
 ### Configuration
 
 1. Edit `config/config.yaml` to customize settings:
@@ -520,6 +545,54 @@ This toolkit is aligned with the MITRE ATT&CK framework for standardized categor
 - **Cleanup**: Always clean up after testing (remove files, persistence, etc.)
 - **Communication**: Maintain open communication with client/system owner
 - **Documentation**: Document every action taken during testing
+
+---
+
+## Development Infrastructure
+
+### Modern Tooling (2025)
+
+This project uses cutting-edge Python development tools:
+
+- **Python 3.14**: Latest Python version with performance improvements
+- **UV**: Fast Rust-based package installer (10-100x faster than pip)
+- **Ruff**: All-in-one linter & formatter (replaces Black, Flake8, isort, pylint)
+- **Pre-commit hooks**: Automated code quality checks before commits
+- **GitHub Actions CI/CD**: Comprehensive testing across Python 3.10-3.14 and multiple OS
+- **Docker**: Containerized environment for consistent execution
+
+### CI/CD Pipeline
+
+Every push and pull request runs:
+- Code quality checks (Ruff linting & formatting)
+- Security scanning (Bandit, GitLeaks, Trufflehog, Safety, pip-audit)
+- Type checking (MyPy)
+- Testing across 5 Python versions (3.10-3.14) and 3 operating systems
+- Docker build validation
+- Documentation build
+- Dependency auditing
+
+### Developer Setup
+
+```bash
+# Install development dependencies
+uv pip install -r requirements-dev.txt
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run tests
+pytest
+
+# Run linting
+ruff check .
+ruff format .
+
+# Run security scans
+bandit -r .
+safety check
+pip-audit
+```
 
 ---
 

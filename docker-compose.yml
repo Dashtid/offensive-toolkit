@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Offensive Toolkit - Main Service
+  # ==========================================================================
+  toolkit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: offensive-toolkit:latest
+    container_name: offensive-toolkit
+
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OSTK_LOGGING__LEVEL=INFO
+      - OSTK_RATE_LIMIT__REQUESTS_PER_SECOND=10
+      - OSTK_AUTHORIZATION__REQUIRE_CONFIRMATION=true
+
+    # Volume mounts for development
+    volumes:
+      - ./:/app                  # Mount source code
+      - ./logs:/app/logs        # Persistent logs
+      - ./output:/app/output    # Persistent output
+      - ./config:/app/config    # Configuration
+
+    # Network configuration
+    network_mode: host
+
+    # Command (override as needed)
+    command: ["python", "-c", "print('Toolkit ready. Override command to run specific tools.')"]
+
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+# ==============================================================================
+# Usage Examples:
+# ==============================================================================
+# Start services: docker-compose up -d
+# Run port scanner: docker-compose run --rm toolkit python reconnaissance/port_scanner.py --target 192.168.1.1
+# Interactive shell: docker-compose run --rm toolkit /bin/bash
+# View logs: docker-compose logs -f toolkit
+# Stop services: docker-compose down

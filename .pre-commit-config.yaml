@@ -1,71 +1,175 @@
-# Pre-commit hooks for Offensive Security Toolkit
-# Install with: pre-commit install
+# Offensive Security Toolkit - Pre-commit Configuration
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+# Update hooks: pre-commit autoupdate
+
+default_language_version:
+  python: python3.14
 
 repos:
-  # General file checks
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+  # ============================================================================
+  # Ruff - Modern Python linter & formatter (replaces Black, Flake8, isort)
+  # ============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-added-large-files
-        args: ['--maxkb=1000']
-      - id: check-case-conflict
-      - id: check-merge-conflict
-      - id: check-json
-      - id: check-toml
-      - id: detect-private-key
-      - id: mixed-line-ending
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      # Run the formatter
+      - id: ruff-format
+        types_or: [python, pyi]
 
-  # Python code formatting
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      - id: black
-        language_version: python3
-        args: ['--line-length=100']
-
-  # Import sorting
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ['--profile=black', '--line-length=100']
-
-  # Linting
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        args: ['--max-line-length=100', '--extend-ignore=E203,W503']
-
-  # Security scanning
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.6
-    hooks:
-      - id: bandit
-        args: ['-c', 'pyproject.toml']
-        additional_dependencies: ['bandit[toml]']
-
-  # Type checking
+  # ============================================================================
+  # MyPy - Static type checking
+  # ============================================================================
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.13.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
-        args: ['--ignore-missing-imports', '--no-strict-optional']
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+        args: [--ignore-missing-imports, --show-error-codes]
+        exclude: ^(tests/|docs/)
 
-  # Documentation
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
+  # ============================================================================
+  # Bandit - Security vulnerability scanner
+  # ============================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
     hooks:
-      - id: pydocstyle
-        args: ['--convention=google']
+      - id: bandit
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^tests/
 
+  # ============================================================================
+  # GitLeaks - Prevent secrets from being committed
+  # ============================================================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # ============================================================================
+  # detect-secrets - Additional secret detection
+  # ============================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # ============================================================================
+  # Standard pre-commit hooks
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # File formatting
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--safe]
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: pretty-format-json
+        args: [--autofix, --no-sort-keys, --indent=2]
+
+      # Code quality
+      - id: check-ast                   # Check Python syntax
+      - id: check-builtin-literals      # Check builtin type constructors
+      - id: check-docstring-first       # Check docstring is first
+      - id: debug-statements            # Check for debugger imports
+      - id: check-merge-conflict        # Check for merge conflict strings
+      - id: check-added-large-files     # Prevent large files
+        args: [--maxkb=1000]
+
+      # Security
+      - id: check-case-conflict         # Check for case conflicts
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key          # Detect private keys
+
+      # Python-specific
+      - id: name-tests-test             # Test files should be named test_*.py
+        args: [--pytest-test-first]
+      - id: requirements-txt-fixer      # Sort requirements.txt
+
+  # ============================================================================
   # YAML linting
+  # ============================================================================
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.33.0
+    rev: v1.35.1
     hooks:
       - id: yamllint
-        args: ['-d', '{extends: default, rules: {line-length: {max: 120}}}']
+        args: [-c=.yamllint.yml]
+        types: [yaml]
+
+  # ============================================================================
+  # Markdown linting
+  # ============================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # ============================================================================
+  # Shell script linting
+  # ============================================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  # ============================================================================
+  # Docker linting
+  # ============================================================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.1-beta
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3013]
+
+  # ============================================================================
+  # Mixed line ending prevention
+  # ============================================================================
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      - id: remove-crlf
+      - id: remove-tabs
+
+  # ============================================================================
+  # Pytest - Run tests (optional, can be slow)
+  # ============================================================================
+  # Uncomment to run tests on every commit (warning: slow)
+  # - repo: local
+  #   hooks:
+  #     - id: pytest
+  #       name: pytest
+  #       entry: pytest
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  #       args: [tests/, -v, --tb=short]
+
+# ============================================================================
+# CI configuration
+# ============================================================================
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

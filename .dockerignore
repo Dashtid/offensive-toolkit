@@ -1,0 +1,86 @@
+# Offensive Security Toolkit - Docker Ignore
+# Exclude unnecessary files from Docker build context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Documentation
+docs/_build/
+*.md
+!README.md
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs and output
+logs/
+*.log
+output/
+results/
+
+# Configuration (use templates instead)
+config/config.yaml
+config/authorized_targets.txt
+.env
+.env.*
+
+# Security sensitive
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Development
+*.bak
+*.tmp
+*.swp
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Large files
+*.pcap
+*.pcapng
+wordlists/
