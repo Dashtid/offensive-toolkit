@@ -7,6 +7,7 @@ version = "0.3.0"
 description = "Comprehensive security testing toolkit for authorized penetration testing"
 readme = "README.md"
 requires-python = ">=3.10"
+packages = [{include = "offensive_toolkit", from = "src"}]
 license = {text = "MIT"}
 authors = [
     {name = "Offensive Toolkit Contributors"}

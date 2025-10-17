@@ -4,7 +4,7 @@ Unit tests for utils/helpers.py module.
 
 import time
 
-from utils.helpers import (
+from offensive_toolkit.utils.helpers import (
     RateLimiter,
     check_authorization,
     format_bytes,

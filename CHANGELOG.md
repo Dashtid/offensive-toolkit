@@ -39,6 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Test suite: 121 passing (from 117), 1 failed, 4 errors (Windows file locking in logger tests)
+- **Major Project Restructure (2025-10-18)**:
+  - Adopted modern Python src/ layout: `src/offensive_toolkit/`
+  - Reduced top-level directories from 24 to 8 (67% reduction)
+  - All source code now in `src/offensive_toolkit/` package
+  - Updated all imports to use `offensive_toolkit.` prefix
+  - Updated pyproject.toml and pytest.ini for src/ layout
+  - Updated .gitignore to prevent future venv pollution
+
+### Removed
+- **Massive cleanup (171MB)**:
+  - Lib/ (114MB) - Virtual environment pollution
+  - Scripts/ (39M) - Virtual environment pollution
+  - venv/ (13M) - Old virtual environment
+  - htmlcov/ (4M) - Build artifacts
+  - 5 empty placeholder modules: scanning/, evasion/, wireless/, social_engineering/, payload_development/
+  - Build artifacts: .coverage, .pytest_cache/, .ruff_cache/, .benchmarks/, share/, test_output/, __pycache__/
 
 
 - **Comprehensive Testing Infrastructure**:

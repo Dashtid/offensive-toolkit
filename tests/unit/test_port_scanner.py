@@ -4,7 +4,7 @@ Unit tests for reconnaissance/port_scanner.py module.
 
 from unittest.mock import Mock, patch
 
-from reconnaissance.port_scanner import COMMON_PORTS, PortScanner
+from offensive_toolkit.reconnaissance.port_scanner import COMMON_PORTS, PortScanner
 
 
 class TestPortScanner:

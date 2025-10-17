@@ -4,7 +4,7 @@ Unit tests for web-security/directory_bruteforcer.py module.
 
 from unittest.mock import Mock, patch
 
-from web_security.directory_bruteforcer import DirectoryBruteforcer
+from offensive_toolkit.web_security.directory_bruteforcer import DirectoryBruteforcer
 
 
 class TestDirectoryBruteforcer:

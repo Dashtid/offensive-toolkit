@@ -6,7 +6,7 @@ import json
 
 import yaml
 
-from utils.config import (
+from offensive_toolkit.utils.config import (
     apply_env_overrides,
     deep_merge,
     get_config_value,

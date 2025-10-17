@@ -91,67 +91,38 @@ authorization:
 testlab.example.com
 ```
 
-3. Review and understand [SECURITY.md](SECURITY.md) before proceeding
-
----
-
 ## Repository Structure
 
 ```
 offensive-toolkit/
-│
-├── reconnaissance/         # OSINT and information gathering [MITRE: TA0043]
-│   ├── dns_resolver.py     # DNS lookups [T1590.002]
-│   ├── subdomain_enum.py   # Subdomain enumeration [T1590.001]
-│   ├── whois_lookup.py     # WHOIS intelligence [T1590.001]
-│   ├── port_scanner.py     # Network service discovery [T1046]
-│   └── __init__.py
-│
-├── web_security/          # Web application security [MITRE: T1190]
-│   ├── sql_injection.py    # SQL injection scanner
-│   ├── xss_scanner.py      # XSS vulnerability detection
-│   ├── directory_bruteforcer.py  # Web path discovery
-│   └── __init__.py
-│
-├── cloud_security/        # Cloud security testing [MITRE: TA0042, TA0007]
-│   ├── aws_scanner.py      # AWS misconfiguration scanner [T1580]
-│   ├── azure_scanner.py    # Azure security scanner [T1580]
-│   ├── gcp_scanner.py      # GCP security scanner [T1580]
-│   ├── cloud_cli.py        # Multi-cloud unified scanner
-│   └── __init__.py
-│
-├── api_security/          # API security testing [MITRE: T1190]
-│   ├── api_fuzzer.py       # OWASP API Top 10 2023 fuzzer
-│   ├── graphql_scanner.py  # GraphQL security scanner
-│   └── __init__.py
-│
-├── post_exploitation/     # Post-access tools [MITRE: Multiple]
-│   ├── persistence.py      # Persistence mechanisms [TA0003]
-│   ├── privesc_windows.py  # Windows privesc [TA0004]
-│   ├── privesc_linux.py    # Linux privesc [TA0004]
-│   ├── privesc_scanner.py  # Unified privesc CLI
-│   ├── credential_dump.py  # Credential harvesting [TA0006]
-│   ├── lateral_movement.py # Lateral movement [TA0008]
-│   └── __init__.py
-│
-├── reporting/             # Report generation & DefectDojo
-│   ├── report_generator.py   # Professional HTML/JSON reports
-│   ├── defectdojo_client.py  # DefectDojo API integration
-│   ├── unified_report.py     # All-in-one reporting CLI
-│   └── __init__.py
-│
-├── exploitation/          # Exploit development [MITRE: TA0002]
-│   ├── reverse_shell.py   # Reverse shell generator [T1059]
-│   └── __init__.py
-│
-├── scanning/              # Network scanning [MITRE: TA0042]
-│   └── __init__.py
-│
-├── social_engineering/    # Social engineering [MITRE: TA0001]
-│   └── __init__.py
-│
-├── wireless/             # Wireless security testing
-│   └── __init__.py
+├── src/                                # Source code
+│   └── offensive_toolkit/              # Main package
+│       ├── reconnaissance/             # Information gathering (MITRE TA0043)
+│       ├── web_security/              # Web application testing
+│       ├── api_security/              # API & GraphQL security
+│       ├── cloud_security/            # AWS, Azure, GCP testing
+│       ├── exploitation/              # Exploit development
+│       ├── post_exploitation/         # Post-compromise tools
+│       ├── reporting/                 # Report generation
+│       └── utils/                     # Helper utilities
+├── tests/                             # Test suite
+│   ├── unit/                          # Unit tests
+│   └── integration/                   # Integration tests
+├── config/                            # Configuration files
+├── docs/                              # Documentation
+├── .github/workflows/                 # CI/CD pipelines
+└── logs/                              # Runtime logs
+```
+
+**Module Overview**:
+- **reconnaissance/**: DNS, subdomain enum, port scanning, WHOIS
+- **web_security/**: SQL injection, XSS, directory bruteforcing
+- **api_security/**: REST API fuzzing, GraphQL scanning
+- **cloud_security/**: AWS, Azure, GCP security scanners
+- **exploitation/**: Reverse shell generators, exploit frameworks
+- **post_exploitation/**: Persistence, privilege escalation, credential dumping
+- **reporting/**: HTML/JSON reports, DefectDojo integration
+
 │
 ├── payload_development/  # Payload creation [MITRE: TA0005]
 │   └── __init__.py

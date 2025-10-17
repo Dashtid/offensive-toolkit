@@ -4,7 +4,7 @@ Unit tests for utils/logger.py module.
 
 import logging
 
-from utils.logger import (
+from offensive_toolkit.utils.logger import (
     SanitizingLogger,
     get_logger,
     sanitize_log_message,

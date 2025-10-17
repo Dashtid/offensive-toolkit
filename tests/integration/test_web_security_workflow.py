@@ -9,9 +9,9 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from web_security.directory_bruteforcer import DirectoryBruteforcer
-from web_security.sql_injection import SQLInjectionScanner
-from web_security.xss_scanner import XSSScanner
+from offensive_toolkit.web_security.directory_bruteforcer import DirectoryBruteforcer
+from offensive_toolkit.web_security.sql_injection import SQLInjectionScanner
+from offensive_toolkit.web_security.xss_scanner import XSSScanner
 
 
 class TestWebSecurityWorkflow:

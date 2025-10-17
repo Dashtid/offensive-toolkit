@@ -243,3 +243,22 @@ docs/_templates/
 
 # IDE Files
 *.sublime-*
+
+# Build & Test Artifacts
+.pytest_cache/
+.ruff_cache/
+.benchmarks/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+test_output/
+share/
+
+# Virtual Environment (additional patterns)
+.venv/
+.virtualenv/
+
+# Python compiled
+*.pyc
+__pycache__/

@@ -9,10 +9,10 @@ from unittest.mock import Mock, patch
 import dns.resolver
 import pytest
 
-from reconnaissance.dns_resolver import DNSResolver
-from reconnaissance.port_scanner import PortScanner
-from reconnaissance.subdomain_enum import SubdomainEnumerator
-from reconnaissance.whois_lookup import WHOISLookup
+from offensive_toolkit.reconnaissance.dns_resolver import DNSResolver
+from offensive_toolkit.reconnaissance.port_scanner import PortScanner
+from offensive_toolkit.reconnaissance.subdomain_enum import SubdomainEnumerator
+from offensive_toolkit.reconnaissance.whois_lookup import WHOISLookup
 
 
 class TestReconnaissanceWorkflow:

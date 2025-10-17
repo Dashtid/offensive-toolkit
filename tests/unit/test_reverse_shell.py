@@ -2,7 +2,7 @@
 Unit tests for exploitation/reverse_shell.py module.
 """
 
-from exploitation.reverse_shell import ReverseShellGenerator
+from offensive_toolkit.exploitation.reverse_shell import ReverseShellGenerator
 
 
 class TestReverseShellGenerator:
