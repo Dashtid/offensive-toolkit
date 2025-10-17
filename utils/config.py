@@ -9,11 +9,12 @@ Author: David Dashti
 Date: 2025-10-15
 """
 
-import os
-import yaml
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
+import yaml
 
 from utils.logger import get_logger
 
@@ -53,7 +54,7 @@ DEFAULT_CONFIG = {
 }
 
 
-def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> dict[str, Any]:
     """
     Load configuration from file with fallback to defaults.
 
@@ -83,7 +84,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     config_file = Path(config_path)
     if config_file.exists():
         try:
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 if config_path.endswith(".yaml") or config_path.endswith(".yml"):
                     file_config = yaml.safe_load(f)
                 elif config_path.endswith(".json"):
@@ -110,7 +111,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     return config
 
 
-def save_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bool:
+def save_config(config: dict[str, Any], config_path: str | None = None) -> bool:
     """
     Save configuration to file.
 
@@ -150,7 +151,7 @@ def save_config(config: Dict[str, Any], config_path: Optional[str] = None) -> bo
         return False
 
 
-def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """
     Deep merge two dictionaries, with override taking precedence.
 
@@ -178,7 +179,7 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
     return result
 
 
-def apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
+def apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
     """
     Apply environment variable overrides to configuration.
 
@@ -204,7 +205,7 @@ def apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
             continue
 
         # Remove prefix and split on double underscore
-        config_path = key[len(prefix):].lower().split("__")
+        config_path = key[len(prefix) :].lower().split("__")
 
         # Navigate to the nested config location
         current = config
@@ -262,7 +263,7 @@ def parse_env_value(value: str) -> Any:
     return value
 
 
-def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> Any:
+def get_config_value(config: dict[str, Any], path: str, default: Any = None) -> Any:
     """
     Get a configuration value using dot notation path.
 
@@ -291,7 +292,7 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
     return current
 
 
-def set_config_value(config: Dict[str, Any], path: str, value: Any) -> None:
+def set_config_value(config: dict[str, Any], path: str, value: Any) -> None:
     """
     Set a configuration value using dot notation path.
 
@@ -321,7 +322,7 @@ if __name__ == "__main__":
 
     # Load default config
     config = load_config()
-    print(f"\n[+] Loaded configuration:")
+    print("\n[+] Loaded configuration:")
     print(yaml.dump(config, default_flow_style=False))
 
     # Test getting values

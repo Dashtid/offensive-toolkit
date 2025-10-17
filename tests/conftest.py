@@ -4,10 +4,11 @@ Pytest configuration and shared fixtures.
 This file contains fixtures and configuration used across all tests.
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
@@ -25,25 +26,19 @@ def test_config():
         "logging": {
             "level": "DEBUG",
             "file": "logs/test.log",
-            "format": "[%(asctime)s] [%(levelname)s] %(message)s"
+            "format": "[%(asctime)s] [%(levelname)s] %(message)s",
         },
         "rate_limit": {
             "enabled": True,
-            "requests_per_second": 100  # High for testing
+            "requests_per_second": 100,  # High for testing
         },
-        "timeouts": {
-            "connection": 5,
-            "read": 10
-        },
-        "output": {
-            "directory": "test_output",
-            "format": "json"
-        },
+        "timeouts": {"connection": 5, "read": 10},
+        "output": {"directory": "test_output", "format": "json"},
         "authorization": {
             "require_confirmation": False,  # Disable for testing
-            "scope_file": "tests/fixtures/test_targets.txt"
+            "scope_file": "tests/fixtures/test_targets.txt",
         },
-        "user_agent": "Offensive-Security-Toolkit-Test/0.1.0"
+        "user_agent": "Offensive-Security-Toolkit-Test/0.1.0",
     }
 
 
@@ -83,8 +78,8 @@ def sample_port_scan_results():
         "results": {
             22: {"status": "open", "service": "SSH"},
             80: {"status": "open", "service": "HTTP"},
-            443: {"status": "open", "service": "HTTPS"}
-        }
+            443: {"status": "open", "service": "HTTPS"},
+        },
     }
 
 
@@ -105,6 +100,7 @@ def cleanup_logs():
 @pytest.fixture
 def mock_socket(monkeypatch):
     """Mock socket connections for testing network tools."""
+
     class MockSocket:
         def __init__(self, *args, **kwargs):
             self.timeout = None
@@ -123,5 +119,6 @@ def mock_socket(monkeypatch):
             pass
 
     import socket
+
     monkeypatch.setattr(socket, "socket", MockSocket)
     return MockSocket

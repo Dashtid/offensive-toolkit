@@ -4,8 +4,9 @@ Integration tests for web security workflow.
 Tests the complete web security testing workflow combining multiple tools.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 import requests
 
 from web_security.directory_bruteforcer import DirectoryBruteforcer
@@ -38,7 +39,9 @@ class TestWebSecurityWorkflow:
 
                 if "/admin" in url or "/login" in url:
                     response.status_code = 200
-                    response.content = b"<html><body><form><input name='username'></form></body></html>"
+                    response.content = (
+                        b"<html><body><form><input name='username'></form></body></html>"
+                    )
                     response.headers = {"Content-Type": "text/html"}
                 else:
                     response.status_code = 404
@@ -68,10 +71,7 @@ class TestWebSecurityWorkflow:
                     sqli_response.text = "MySQL syntax error"
                     mock_sqli_get.return_value = sqli_response
 
-                    sqli_results = sqli_scanner.run(
-                        f"{test_url}?id=1",
-                        test_all_types=False
-                    )
+                    sqli_results = sqli_scanner.run(f"{test_url}?id=1", test_all_types=False)
 
                     # Should complete without errors
                     assert "error" not in sqli_results
@@ -86,6 +86,7 @@ class TestWebSecurityWorkflow:
         bruteforcer = DirectoryBruteforcer(test_config)
 
         with patch("requests.Session.get") as mock_get:
+
             def dir_mock_response(*args, **kwargs):
                 response = Mock()
                 url = args[0] if args else kwargs.get("url", "")
@@ -104,8 +105,7 @@ class TestWebSecurityWorkflow:
             mock_get.side_effect = dir_mock_response
 
             dir_results = bruteforcer.run(
-                authorized_url,
-                wordlist=["search", "comment", "profile", "api"]
+                authorized_url, wordlist=["search", "comment", "profile", "api"]
             )
 
             assert dir_results["total_found"] >= 2
@@ -138,6 +138,7 @@ class TestWebSecurityWorkflow:
                 test_url = f"{found_page['url']}?q=test"
 
                 with patch("requests.Session.get") as mock_xss_get:
+
                     def xss_mock_response(*args, **kwargs):
                         url = args[0] if args else kwargs.get("url", "")
                         response = Mock()
@@ -146,7 +147,9 @@ class TestWebSecurityWorkflow:
                         # Reflect payload in response
                         if "q=" in url:
                             payload = url.split("q=")[1].split("&")[0]
-                            response.text = f"<html><body>Search results for: {payload}</body></html>"
+                            response.text = (
+                                f"<html><body>Search results for: {payload}</body></html>"
+                            )
                         else:
                             response.text = "<html><body>Page content</body></html>"
 
@@ -175,9 +178,7 @@ class TestWebSecurityWorkflow:
 
         test_url = f"{authorized_url}/login?username=admin"
 
-        with patch("requests.Session.get") as mock_get, \
-             patch("requests.Session.post") as mock_post:
-
+        with patch("requests.Session.get") as mock_get, patch("requests.Session.post") as mock_post:
             # Mock responses for different injection types
             def mock_response(*args, **kwargs):
                 response = Mock()
@@ -196,11 +197,7 @@ class TestWebSecurityWorkflow:
             mock_post.side_effect = mock_response
 
             # Test all injection types
-            results = sqli_scanner.run(
-                test_url,
-                params=["username"],
-                test_all_types=True
-            )
+            results = sqli_scanner.run(test_url, params=["username"], test_all_types=True)
 
             # Verify all injection types were tested
             assert "injection_types" in results
@@ -430,9 +427,8 @@ class TestWebSecurityReporting:
             assert len(output_files) >= 2
 
             # Aggregate vulnerability counts
-            total_vulns = (
-                sqli_results.get("vulnerabilities_found", 0) +
-                xss_results.get("vulnerabilities_found", 0)
+            total_vulns = sqli_results.get("vulnerabilities_found", 0) + xss_results.get(
+                "vulnerabilities_found", 0
             )
 
             assert isinstance(total_vulns, int)

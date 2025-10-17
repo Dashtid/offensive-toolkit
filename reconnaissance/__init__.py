@@ -8,4 +8,4 @@ OSINT, domain enumeration, network mapping, and information gathering tools.
 
 from .port_scanner import PortScanner
 
-__all__ = ['PortScanner']
+__all__ = ["PortScanner"]

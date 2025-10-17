@@ -14,12 +14,12 @@ License: Educational/Research Use Only
 """
 
 import argparse
-import logging
-import json
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, List, Optional
 import concurrent.futures
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from .aws_scanner import AWSScanner
 from .azure_scanner import AzureScanner
@@ -46,7 +46,7 @@ class MultiCloudScanner:
             "scan_metadata": {
                 "timestamp": datetime.utcnow().isoformat(),
                 "scanner": "MultiCloudScanner",
-                "clouds_scanned": []
+                "clouds_scanned": [],
             },
             "aws": {},
             "azure": {},
@@ -57,11 +57,11 @@ class MultiCloudScanner:
                 "total_medium": 0,
                 "total_low": 0,
                 "total_info": 0,
-                "by_cloud": {}
-            }
+                "by_cloud": {},
+            },
         }
 
-    def scan_aws(self, profile: Optional[str] = None, region: str = "us-east-1") -> Dict[str, Any]:
+    def scan_aws(self, profile: str | None = None, region: str = "us-east-1") -> dict[str, Any]:
         """
         Scan AWS environment.
 
@@ -91,7 +91,9 @@ class MultiCloudScanner:
             self.findings["aws"] = {"error": str(e)}
             return {}
 
-    def scan_azure(self, subscription_id: Optional[str] = None, use_cli_auth: bool = False) -> Dict[str, Any]:
+    def scan_azure(
+        self, subscription_id: str | None = None, use_cli_auth: bool = False
+    ) -> dict[str, Any]:
         """
         Scan Azure environment.
 
@@ -121,7 +123,9 @@ class MultiCloudScanner:
             self.findings["azure"] = {"error": str(e)}
             return {}
 
-    def scan_gcp(self, project_id: Optional[str] = None, credentials_file: Optional[str] = None) -> Dict[str, Any]:
+    def scan_gcp(
+        self, project_id: str | None = None, credentials_file: str | None = None
+    ) -> dict[str, Any]:
         """
         Scan GCP environment.
 
@@ -153,10 +157,10 @@ class MultiCloudScanner:
 
     def scan_all_parallel(
         self,
-        aws_config: Optional[Dict[str, Any]] = None,
-        azure_config: Optional[Dict[str, Any]] = None,
-        gcp_config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        aws_config: dict[str, Any] | None = None,
+        azure_config: dict[str, Any] | None = None,
+        gcp_config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Scan all configured cloud providers in parallel.
 
@@ -177,21 +181,21 @@ class MultiCloudScanner:
                 futures["aws"] = executor.submit(
                     self.scan_aws,
                     profile=aws_config.get("profile"),
-                    region=aws_config.get("region", "us-east-1")
+                    region=aws_config.get("region", "us-east-1"),
                 )
 
             if azure_config:
                 futures["azure"] = executor.submit(
                     self.scan_azure,
                     subscription_id=azure_config.get("subscription_id"),
-                    use_cli_auth=azure_config.get("use_cli_auth", False)
+                    use_cli_auth=azure_config.get("use_cli_auth", False),
                 )
 
             if gcp_config:
                 futures["gcp"] = executor.submit(
                     self.scan_gcp,
                     project_id=gcp_config.get("project_id"),
-                    credentials_file=gcp_config.get("credentials_file")
+                    credentials_file=gcp_config.get("credentials_file"),
                 )
 
             # Wait for all scans to complete
@@ -216,33 +220,39 @@ class MultiCloudScanner:
         report_lines.append("MULTI-CLOUD SECURITY ASSESSMENT SUMMARY")
         report_lines.append("=" * 70)
         report_lines.append(f"\nScan Timestamp: {self.findings['scan_metadata']['timestamp']}")
-        report_lines.append(f"Clouds Scanned: {', '.join(self.findings['scan_metadata']['clouds_scanned']).upper()}")
+        report_lines.append(
+            f"Clouds Scanned: {', '.join(self.findings['scan_metadata']['clouds_scanned']).upper()}"
+        )
 
         report_lines.append("\n" + "-" * 70)
         report_lines.append("AGGREGATE FINDINGS")
         report_lines.append("-" * 70)
-        report_lines.append(f"  [CRITICAL]  {self.findings['summary']['total_critical']:3d} findings")
+        report_lines.append(
+            f"  [CRITICAL]  {self.findings['summary']['total_critical']:3d} findings"
+        )
         report_lines.append(f"  [HIGH]      {self.findings['summary']['total_high']:3d} findings")
         report_lines.append(f"  [MEDIUM]    {self.findings['summary']['total_medium']:3d} findings")
         report_lines.append(f"  [LOW]       {self.findings['summary']['total_low']:3d} findings")
         report_lines.append(f"  [INFO]      {self.findings['summary']['total_info']:3d} findings")
 
-        total_findings = sum([
-            self.findings['summary']['total_critical'],
-            self.findings['summary']['total_high'],
-            self.findings['summary']['total_medium'],
-            self.findings['summary']['total_low'],
-            self.findings['summary']['total_info']
-        ])
+        total_findings = sum(
+            [
+                self.findings["summary"]["total_critical"],
+                self.findings["summary"]["total_high"],
+                self.findings["summary"]["total_medium"],
+                self.findings["summary"]["total_low"],
+                self.findings["summary"]["total_info"],
+            ]
+        )
         report_lines.append(f"\n  Total: {total_findings} findings across all clouds")
 
         # Per-cloud breakdown
-        if self.findings['summary']['by_cloud']:
+        if self.findings["summary"]["by_cloud"]:
             report_lines.append("\n" + "-" * 70)
             report_lines.append("FINDINGS BY CLOUD PROVIDER")
             report_lines.append("-" * 70)
 
-            for cloud, summary in self.findings['summary']['by_cloud'].items():
+            for cloud, summary in self.findings["summary"]["by_cloud"].items():
                 report_lines.append(f"\n{cloud.upper()}:")
                 report_lines.append(f"  Critical: {summary['critical']}")
                 report_lines.append(f"  High:     {summary['high']}")
@@ -258,7 +268,7 @@ class MultiCloudScanner:
         """Save scan results to JSON file."""
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(self.findings, f, indent=2)
 
         logger.info(f"[+] Results saved to {output_file}")
@@ -293,38 +303,37 @@ MITRE ATT&CK Mapping:
   T1580: Cloud Infrastructure Discovery
   T1526: Cloud Service Discovery
   T1087.004: Account Discovery - Cloud Account
-        """
+        """,
     )
 
     # General options
-    parser.add_argument('--clouds', nargs='+', choices=['aws', 'azure', 'gcp'],
-                       help='Cloud providers to scan')
-    parser.add_argument('--scan-all', action='store_true', help='Scan all configured clouds')
-    parser.add_argument('--parallel', action='store_true', help='Scan clouds in parallel (faster)')
-    parser.add_argument('--output', type=Path, default=Path('output/multi_cloud_scan.json'),
-                       help='Output file path')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser.add_argument(
+        "--clouds", nargs="+", choices=["aws", "azure", "gcp"], help="Cloud providers to scan"
+    )
+    parser.add_argument("--scan-all", action="store_true", help="Scan all configured clouds")
+    parser.add_argument("--parallel", action="store_true", help="Scan clouds in parallel (faster)")
+    parser.add_argument(
+        "--output", type=Path, default=Path("output/multi_cloud_scan.json"), help="Output file path"
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     # AWS options
-    parser.add_argument('--aws-profile', help='AWS CLI profile name')
-    parser.add_argument('--aws-region', default='us-east-1', help='AWS region')
+    parser.add_argument("--aws-profile", help="AWS CLI profile name")
+    parser.add_argument("--aws-region", default="us-east-1", help="AWS region")
 
     # Azure options
-    parser.add_argument('--azure-subscription', help='Azure subscription ID')
-    parser.add_argument('--use-azure-cli', action='store_true', help='Use Azure CLI authentication')
+    parser.add_argument("--azure-subscription", help="Azure subscription ID")
+    parser.add_argument("--use-azure-cli", action="store_true", help="Use Azure CLI authentication")
 
     # GCP options
-    parser.add_argument('--gcp-project', help='GCP project ID')
-    parser.add_argument('--gcp-credentials', help='Path to GCP service account JSON')
+    parser.add_argument("--gcp-project", help="GCP project ID")
+    parser.add_argument("--gcp-credentials", help="Path to GCP service account JSON")
 
     args = parser.parse_args()
 
     # Configure logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(message)s")
 
     print("""
     ╔═══════════════════════════════════════════════════════════╗
@@ -341,7 +350,7 @@ MITRE ATT&CK Mapping:
         clouds_to_scan = []
         if args.scan_all:
             # Attempt all clouds (failures will be graceful)
-            clouds_to_scan = ['aws', 'azure', 'gcp']
+            clouds_to_scan = ["aws", "azure", "gcp"]
         elif args.clouds:
             clouds_to_scan = args.clouds
         else:
@@ -353,47 +362,36 @@ MITRE ATT&CK Mapping:
         azure_config = None
         gcp_config = None
 
-        if 'aws' in clouds_to_scan:
-            aws_config = {
-                "profile": args.aws_profile,
-                "region": args.aws_region
-            }
+        if "aws" in clouds_to_scan:
+            aws_config = {"profile": args.aws_profile, "region": args.aws_region}
 
-        if 'azure' in clouds_to_scan:
+        if "azure" in clouds_to_scan:
             azure_config = {
                 "subscription_id": args.azure_subscription,
-                "use_cli_auth": args.use_azure_cli
+                "use_cli_auth": args.use_azure_cli,
             }
 
-        if 'gcp' in clouds_to_scan:
-            gcp_config = {
-                "project_id": args.gcp_project,
-                "credentials_file": args.gcp_credentials
-            }
+        if "gcp" in clouds_to_scan:
+            gcp_config = {"project_id": args.gcp_project, "credentials_file": args.gcp_credentials}
 
         # Execute scans
         if args.parallel:
             scanner.scan_all_parallel(
-                aws_config=aws_config,
-                azure_config=azure_config,
-                gcp_config=gcp_config
+                aws_config=aws_config, azure_config=azure_config, gcp_config=gcp_config
             )
         else:
             # Sequential scanning
             if aws_config:
-                scanner.scan_aws(
-                    profile=aws_config["profile"],
-                    region=aws_config["region"]
-                )
+                scanner.scan_aws(profile=aws_config["profile"], region=aws_config["region"])
             if azure_config:
                 scanner.scan_azure(
                     subscription_id=azure_config["subscription_id"],
-                    use_cli_auth=azure_config["use_cli_auth"]
+                    use_cli_auth=azure_config["use_cli_auth"],
                 )
             if gcp_config:
                 scanner.scan_gcp(
                     project_id=gcp_config["project_id"],
-                    credentials_file=gcp_config["credentials_file"]
+                    credentials_file=gcp_config["credentials_file"],
                 )
 
         # Generate and display summary
@@ -404,8 +402,10 @@ MITRE ATT&CK Mapping:
         scanner.save_results(args.output)
 
         # Exit with error code if critical findings exist
-        if scanner.findings['summary']['total_critical'] > 0:
-            logger.warning(f"[!] {scanner.findings['summary']['total_critical']} CRITICAL findings detected!")
+        if scanner.findings["summary"]["total_critical"] > 0:
+            logger.warning(
+                f"[!] {scanner.findings['summary']['total_critical']} CRITICAL findings detected!"
+            )
             return 2
 
         return 0
@@ -417,4 +417,5 @@ MITRE ATT&CK Mapping:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

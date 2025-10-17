@@ -26,30 +26,27 @@ MITRE ATT&CK: T1590.002 (Gather Victim Network Information: DNS)
 
 import argparse
 import sys
-import dns.resolver
-import dns.exception
-from typing import List, Dict, Any, Optional
 from ipaddress import ip_address
+from typing import Any
 
-from utils.logger import get_logger
+import dns.exception
+import dns.resolver
+
 from utils.config import load_config
-from utils.helpers import (
-    validate_domain,
-    check_authorization,
-    sanitize_filename
-)
+from utils.helpers import check_authorization, sanitize_filename, validate_domain
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 # Common public DNS resolvers
 DEFAULT_RESOLVERS = [
-    "8.8.8.8",      # Google
-    "8.8.4.4",      # Google Secondary
-    "1.1.1.1",      # Cloudflare
-    "1.0.0.1",      # Cloudflare Secondary
-    "9.9.9.9",      # Quad9
-    "208.67.222.222"  # OpenDNS
+    "8.8.8.8",  # Google
+    "8.8.4.4",  # Google Secondary
+    "1.1.1.1",  # Cloudflare
+    "1.0.0.1",  # Cloudflare Secondary
+    "9.9.9.9",  # Quad9
+    "208.67.222.222",  # OpenDNS
 ]
 
 # DNS record types
@@ -63,7 +60,7 @@ class DNSResolver:
     Performs DNS queries using multiple resolvers for reliability.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize DNS resolver.
 
@@ -75,11 +72,8 @@ class DNSResolver:
         logger.info(f"Initialized {self.__class__.__name__}")
 
     def query_record(
-        self,
-        domain: str,
-        record_type: str = "A",
-        resolver_ip: Optional[str] = None
-    ) -> List[str]:
+        self, domain: str, record_type: str = "A", resolver_ip: str | None = None
+    ) -> list[str]:
         """
         Query DNS record from specified resolver.
 
@@ -129,10 +123,8 @@ class DNSResolver:
         return results
 
     def resolve_multiple_resolvers(
-        self,
-        domain: str,
-        record_type: str = "A"
-    ) -> Dict[str, List[str]]:
+        self, domain: str, record_type: str = "A"
+    ) -> dict[str, list[str]]:
         """
         Query DNS record using multiple resolvers for comparison.
 
@@ -154,10 +146,8 @@ class DNSResolver:
         return results
 
     def comprehensive_lookup(
-        self,
-        domain: str,
-        record_types: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, domain: str, record_types: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Perform comprehensive DNS lookup for all record types.
 
@@ -183,7 +173,7 @@ class DNSResolver:
 
         return results
 
-    def reverse_lookup(self, ip: str) -> Optional[str]:
+    def reverse_lookup(self, ip: str) -> str | None:
         """
         Perform reverse DNS lookup for IP address.
 
@@ -199,6 +189,7 @@ class DNSResolver:
 
             # Reverse lookup
             import socket
+
             hostname = socket.gethostbyaddr(ip)[0]
             logger.info(f"Reverse DNS: {ip} -> {hostname}")
             return hostname
@@ -208,11 +199,8 @@ class DNSResolver:
             return None
 
     def run(
-        self,
-        domain: str,
-        record_types: Optional[List[str]] = None,
-        compare_resolvers: bool = False
-    ) -> Dict[str, Any]:
+        self, domain: str, record_types: list[str] | None = None, compare_resolvers: bool = False
+    ) -> dict[str, Any]:
         """
         Execute DNS resolution.
 
@@ -236,14 +224,11 @@ class DNSResolver:
 
         logger.info(f"Starting DNS resolution for {domain}")
 
-        results = {
-            "domain": domain,
-            "records": {}
-        }
+        results = {"domain": domain, "records": {}}
 
         if compare_resolvers:
             # Compare results across resolvers
-            for record_type in (record_types or ["A", "AAAA"]):
+            for record_type in record_types or ["A", "AAAA"]:
                 resolver_results = self.resolve_multiple_resolvers(domain, record_type)
                 if resolver_results:
                     results["records"][record_type] = resolver_results
@@ -257,7 +242,7 @@ class DNSResolver:
 
         return results
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save DNS results to output directory.
 
@@ -265,8 +250,8 @@ class DNSResolver:
             results: Results dictionary to save
         """
         import json
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         output_dir = Path(self.config.get("output", {}).get("directory", "output"))
         output_dir.mkdir(exist_ok=True)
@@ -293,48 +278,29 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="DNS Resolver - Multi-Resolver DNS Lookups\n"
-                    "[!] For authorized reconnaissance only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized reconnaissance only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--domain",
-        required=True,
-        help="Domain to resolve"
-    )
+    parser.add_argument("--domain", required=True, help="Domain to resolve")
 
     parser.add_argument(
         "--types",
         default="A,AAAA,MX,NS,TXT",
-        help="Comma-separated DNS record types (default: A,AAAA,MX,NS,TXT)"
+        help="Comma-separated DNS record types (default: A,AAAA,MX,NS,TXT)",
     )
 
-    parser.add_argument(
-        "--resolvers",
-        help="Comma-separated list of custom DNS resolvers"
-    )
+    parser.add_argument("--resolvers", help="Comma-separated list of custom DNS resolvers")
 
     parser.add_argument(
-        "--compare",
-        action="store_true",
-        help="Compare results across multiple resolvers"
+        "--compare", action="store_true", help="Compare results across multiple resolvers"
     )
 
-    parser.add_argument(
-        "--reverse",
-        help="Perform reverse DNS lookup for IP address"
-    )
+    parser.add_argument("--reverse", help="Perform reverse DNS lookup for IP address")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -344,6 +310,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -363,9 +330,8 @@ def main() -> int:
         if hostname:
             print(f"[+] Reverse DNS: {args.reverse} -> {hostname}")
             return 0
-        else:
-            print(f"[-] No reverse DNS found for {args.reverse}")
-            return 1
+        print(f"[-] No reverse DNS found for {args.reverse}")
+        return 1
 
     # Parse record types
     record_types = args.types.split(",") if args.types else None

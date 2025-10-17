@@ -25,19 +25,15 @@ MITRE ATT&CK: T1590.001 (Gather Victim Network Information: Domain Properties)
 """
 
 import argparse
-import sys
-import socket
 import re
-from typing import Dict, Any, Optional, List
+import socket
+import sys
 from datetime import datetime
+from typing import Any
 
-from utils.logger import get_logger
 from utils.config import load_config
-from utils.helpers import (
-    validate_domain,
-    check_authorization,
-    sanitize_filename
-)
+from utils.helpers import check_authorization, sanitize_filename, validate_domain
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -78,7 +74,7 @@ class WHOISLookup:
     WHOIS lookup and domain intelligence gathering tool.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize WHOIS lookup tool.
 
@@ -88,11 +84,7 @@ class WHOISLookup:
         self.config = config or load_config()
         logger.info(f"Initialized {self.__class__.__name__}")
 
-    def query_whois_server(
-        self,
-        domain: str,
-        whois_server: Optional[str] = None
-    ) -> str:
+    def query_whois_server(self, domain: str, whois_server: str | None = None) -> str:
         """
         Query WHOIS server for domain information.
 
@@ -138,7 +130,7 @@ class WHOISLookup:
             referral_match = re.search(
                 r"(?:Registrar WHOIS Server|ReferralServer|Whois Server):\s*(?:whois://)?(.+)",
                 response_text,
-                re.IGNORECASE
+                re.IGNORECASE,
             )
 
             if referral_match:
@@ -148,14 +140,14 @@ class WHOISLookup:
 
             return response_text
 
-        except socket.timeout:
+        except TimeoutError:
             logger.error(f"WHOIS query timeout for {domain}")
             return ""
         except Exception as e:
             logger.error(f"WHOIS query error for {domain}: {e}")
             return ""
 
-    def parse_whois(self, whois_text: str) -> Dict[str, Any]:
+    def parse_whois(self, whois_text: str) -> dict[str, Any]:
         """
         Parse WHOIS response text into structured data.
 
@@ -190,33 +182,39 @@ class WHOISLookup:
 
             # Domain name
             if re.match(r"Domain Name:\s*(.+)", line, re.IGNORECASE):
-                parsed["domain_name"] = re.search(
-                    r"Domain Name:\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["domain_name"] = (
+                    re.search(r"Domain Name:\s*(.+)", line, re.IGNORECASE).group(1).strip()
+                )
 
             # Registrar
             elif re.match(r"Registrar:\s*(.+)", line, re.IGNORECASE):
-                parsed["registrar"] = re.search(
-                    r"Registrar:\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["registrar"] = (
+                    re.search(r"Registrar:\s*(.+)", line, re.IGNORECASE).group(1).strip()
+                )
 
             # Creation date
             elif re.match(r"(?:Creation Date|Created):\s*(.+)", line, re.IGNORECASE):
-                parsed["creation_date"] = re.search(
-                    r"(?:Creation Date|Created):\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["creation_date"] = (
+                    re.search(r"(?:Creation Date|Created):\s*(.+)", line, re.IGNORECASE)
+                    .group(1)
+                    .strip()
+                )
 
             # Expiration date
             elif re.match(r"(?:Expir|Registry Expiry Date):\s*(.+)", line, re.IGNORECASE):
-                parsed["expiration_date"] = re.search(
-                    r"(?:Expir|Registry Expiry Date):\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["expiration_date"] = (
+                    re.search(r"(?:Expir|Registry Expiry Date):\s*(.+)", line, re.IGNORECASE)
+                    .group(1)
+                    .strip()
+                )
 
             # Updated date
             elif re.match(r"(?:Updated Date|Last Updated):\s*(.+)", line, re.IGNORECASE):
-                parsed["updated_date"] = re.search(
-                    r"(?:Updated Date|Last Updated):\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["updated_date"] = (
+                    re.search(r"(?:Updated Date|Last Updated):\s*(.+)", line, re.IGNORECASE)
+                    .group(1)
+                    .strip()
+                )
 
             # Name servers
             elif re.match(r"Name Server:\s*(.+)", line, re.IGNORECASE):
@@ -226,21 +224,21 @@ class WHOISLookup:
 
             # Status
             elif re.match(r"(?:Domain )?Status:\s*(.+)", line, re.IGNORECASE):
-                status = re.search(
-                    r"(?:Domain )?Status:\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                status = (
+                    re.search(r"(?:Domain )?Status:\s*(.+)", line, re.IGNORECASE).group(1).strip()
+                )
                 if status not in parsed["status"]:
                     parsed["status"].append(status)
 
             # DNSSEC
             elif re.match(r"DNSSEC:\s*(.+)", line, re.IGNORECASE):
-                parsed["dnssec"] = re.search(
-                    r"DNSSEC:\s*(.+)", line, re.IGNORECASE
-                ).group(1).strip()
+                parsed["dnssec"] = (
+                    re.search(r"DNSSEC:\s*(.+)", line, re.IGNORECASE).group(1).strip()
+                )
 
         return parsed
 
-    def bulk_lookup(self, domains: List[str]) -> Dict[str, Any]:
+    def bulk_lookup(self, domains: list[str]) -> dict[str, Any]:
         """
         Perform WHOIS lookup on multiple domains.
 
@@ -259,20 +257,13 @@ class WHOISLookup:
             whois_text = self.query_whois_server(domain)
             if whois_text:
                 parsed = self.parse_whois(whois_text)
-                results[domain] = {
-                    "raw": whois_text,
-                    "parsed": parsed
-                }
+                results[domain] = {"raw": whois_text, "parsed": parsed}
             else:
                 results[domain] = {"error": "WHOIS query failed"}
 
         return results
 
-    def run(
-        self,
-        domain: str,
-        parse: bool = True
-    ) -> Dict[str, Any]:
+    def run(self, domain: str, parse: bool = True) -> dict[str, Any]:
         """
         Execute WHOIS lookup.
 
@@ -302,11 +293,7 @@ class WHOISLookup:
         if not whois_text:
             return {"error": "WHOIS query failed"}
 
-        results = {
-            "domain": domain,
-            "raw": whois_text,
-            "timestamp": datetime.now().isoformat()
-        }
+        results = {"domain": domain, "raw": whois_text, "timestamp": datetime.now().isoformat()}
 
         # Parse if requested
         if parse:
@@ -319,7 +306,7 @@ class WHOISLookup:
 
         return results
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save WHOIS results to output directory.
 
@@ -354,41 +341,21 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="WHOIS Lookup - Domain Intelligence Gathering\n"
-                    "[!] For authorized reconnaissance only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized reconnaissance only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--domain",
-        help="Domain to lookup"
-    )
+    parser.add_argument("--domain", help="Domain to lookup")
 
-    parser.add_argument(
-        "--file",
-        help="File containing list of domains (one per line)"
-    )
+    parser.add_argument("--file", help="File containing list of domains (one per line)")
 
-    parser.add_argument(
-        "--no-parse",
-        action="store_true",
-        help="Don't parse WHOIS response"
-    )
+    parser.add_argument("--no-parse", action="store_true", help="Don't parse WHOIS response")
 
-    parser.add_argument(
-        "--server",
-        help="Specific WHOIS server to query"
-    )
+    parser.add_argument("--server", help="Specific WHOIS server to query")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -401,6 +368,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -429,12 +397,12 @@ def main() -> int:
             print(f"    DNSSEC: {parsed.get('dnssec', 'N/A')}")
 
             if parsed.get("name_servers"):
-                print(f"\n[+] Name Servers:")
+                print("\n[+] Name Servers:")
                 for ns in parsed["name_servers"]:
                     print(f"    - {ns}")
 
             if parsed.get("status"):
-                print(f"\n[+] Status:")
+                print("\n[+] Status:")
                 for status in parsed["status"]:
                     print(f"    - {status}")
 
@@ -443,14 +411,14 @@ def main() -> int:
     # Bulk lookup
     elif args.file:
         try:
-            with open(args.file, "r") as f:
+            with open(args.file) as f:
                 domains = [line.strip() for line in f if line.strip()]
 
             print(f"[*] Loaded {len(domains)} domains from {args.file}")
             results = lookup.bulk_lookup(domains)
 
             # Print summary
-            print(f"\n[+] Bulk Lookup Summary:")
+            print("\n[+] Bulk Lookup Summary:")
             print(f"    Total Domains: {len(domains)}")
             print(f"    Successful: {sum(1 for r in results.values() if 'error' not in r)}")
             print(f"    Failed: {sum(1 for r in results.values() if 'error' in r)}")

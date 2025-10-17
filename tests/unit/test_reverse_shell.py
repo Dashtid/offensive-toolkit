@@ -2,7 +2,6 @@
 Unit tests for exploitation/reverse_shell.py module.
 """
 
-import pytest
 from exploitation.reverse_shell import ReverseShellGenerator
 
 

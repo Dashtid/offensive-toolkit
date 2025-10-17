@@ -2,20 +2,18 @@
 Unit tests for utils/config.py module.
 """
 
-import pytest
-import yaml
 import json
-import os
-from pathlib import Path
+
+import yaml
+
 from utils.config import (
-    load_config,
-    save_config,
-    deep_merge,
     apply_env_overrides,
-    parse_env_value,
+    deep_merge,
     get_config_value,
+    load_config,
+    parse_env_value,
+    save_config,
     set_config_value,
-    DEFAULT_CONFIG
 )
 
 
@@ -34,10 +32,7 @@ class TestLoadConfig:
     def test_load_yaml_config(self, temp_dir):
         """Test loading YAML configuration file."""
         config_file = temp_dir / "test.yaml"
-        test_config = {
-            "rate_limit": {"requests_per_second": 20},
-            "custom_key": "custom_value"
-        }
+        test_config = {"rate_limit": {"requests_per_second": 20}, "custom_key": "custom_value"}
 
         with open(config_file, "w") as f:
             yaml.dump(test_config, f)
@@ -50,10 +45,7 @@ class TestLoadConfig:
     def test_load_json_config(self, temp_dir):
         """Test loading JSON configuration file."""
         config_file = temp_dir / "test.json"
-        test_config = {
-            "timeouts": {"connection": 15},
-            "test_key": "test_value"
-        }
+        test_config = {"timeouts": {"connection": 15}, "test_key": "test_value"}
 
         with open(config_file, "w") as f:
             json.dump(test_config, f)
@@ -81,10 +73,7 @@ class TestSaveConfig:
     def test_save_yaml_config(self, temp_dir):
         """Test saving configuration to YAML file."""
         config_file = temp_dir / "save_test.yaml"
-        test_config = {
-            "test": "value",
-            "number": 42
-        }
+        test_config = {"test": "value", "number": 42}
 
         result = save_config(test_config, str(config_file))
 
@@ -92,7 +81,7 @@ class TestSaveConfig:
         assert config_file.exists()
 
         # Verify content
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             loaded = yaml.safe_load(f)
 
         assert loaded["test"] == "value"
@@ -101,10 +90,7 @@ class TestSaveConfig:
     def test_save_json_config(self, temp_dir):
         """Test saving configuration to JSON file."""
         config_file = temp_dir / "save_test.json"
-        test_config = {
-            "test": "value",
-            "nested": {"key": "value"}
-        }
+        test_config = {"test": "value", "nested": {"key": "value"}}
 
         result = save_config(test_config, str(config_file))
 
@@ -112,7 +98,7 @@ class TestSaveConfig:
         assert config_file.exists()
 
         # Verify content
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             loaded = json.load(f)
 
         assert loaded["test"] == "value"
@@ -135,22 +121,8 @@ class TestDeepMerge:
 
     def test_merge_nested_dicts(self):
         """Test merging nested dictionaries."""
-        base = {
-            "level1": {
-                "level2": {
-                    "key1": "value1",
-                    "key2": "value2"
-                }
-            }
-        }
-        override = {
-            "level1": {
-                "level2": {
-                    "key2": "new_value",
-                    "key3": "value3"
-                }
-            }
-        }
+        base = {"level1": {"level2": {"key1": "value1", "key2": "value2"}}}
+        override = {"level1": {"level2": {"key2": "new_value", "key3": "value3"}}}
 
         result = deep_merge(base, override)
 
@@ -266,13 +238,7 @@ class TestGetConfigValue:
 
     def test_get_nested_value(self):
         """Test getting nested configuration value."""
-        config = {
-            "level1": {
-                "level2": {
-                    "key": "value"
-                }
-            }
-        }
+        config = {"level1": {"level2": {"key": "value"}}}
         result = get_config_value(config, "level1.level2.key")
 
         assert result == "value"
@@ -334,13 +300,7 @@ class TestConfigIntegration:
         """Test loading and saving configuration maintains data."""
         config_file = temp_dir / "roundtrip.yaml"
 
-        original_config = {
-            "test": "value",
-            "nested": {
-                "key": "value",
-                "number": 42
-            }
-        }
+        original_config = {"test": "value", "nested": {"key": "value", "number": 42}}
 
         # Save
         save_config(original_config, str(config_file))

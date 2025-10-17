@@ -19,19 +19,21 @@ License: Educational/Research Use Only
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 try:
-    from azure.identity import DefaultAzureCredential, AzureCliCredential
+    from azure.core.exceptions import AzureError, HttpResponseError
+    from azure.identity import AzureCliCredential, DefaultAzureCredential
+    from azure.mgmt.compute import ComputeManagementClient
+    from azure.mgmt.network import NetworkManagementClient
     from azure.mgmt.resource import ResourceManagementClient, SubscriptionClient
     from azure.mgmt.storage import StorageManagementClient
-    from azure.mgmt.network import NetworkManagementClient
-    from azure.mgmt.compute import ComputeManagementClient
-    from azure.core.exceptions import AzureError, HttpResponseError
 except ImportError:
-    raise ImportError("Azure SDK not installed. Run: pip install azure-identity azure-mgmt-resource azure-mgmt-storage azure-mgmt-network")
+    raise ImportError(
+        "Azure SDK not installed. Run: pip install azure-identity azure-mgmt-resource azure-mgmt-storage azure-mgmt-network"
+    )
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -50,7 +52,7 @@ class AzureScanner:
     - Resource encryption validation
     """
 
-    def __init__(self, subscription_id: Optional[str] = None, use_cli_auth: bool = False):
+    def __init__(self, subscription_id: str | None = None, use_cli_auth: bool = False):
         """
         Initialize Azure scanner with credentials.
 
@@ -63,19 +65,13 @@ class AzureScanner:
             "scan_metadata": {
                 "timestamp": datetime.utcnow().isoformat(),
                 "scanner": "AzureScanner",
-                "subscription_id": subscription_id
+                "subscription_id": subscription_id,
             },
             "storage": [],
             "network": [],
             "compute": [],
             "rbac": [],
-            "summary": {
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0,
-                "info": 0
-            }
+            "summary": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
         }
 
         # Initialize Azure credentials
@@ -113,7 +109,7 @@ class AzureScanner:
             logger.error(f"[-] Error initializing Azure scanner: {e}")
             raise
 
-    def _add_finding(self, category: str, finding: Dict[str, Any]) -> None:
+    def _add_finding(self, category: str, finding: dict[str, Any]) -> None:
         """Add finding and update severity counts."""
         self.findings[category].append(finding)
         severity = finding.get("severity", "info")
@@ -137,72 +133,89 @@ class AzureScanner:
 
             for account in storage_accounts:
                 account_name = account.name
-                resource_group = account.id.split('/')[4]
+                resource_group = account.id.split("/")[4]
 
                 # Check HTTPS-only
                 if not account.enable_https_traffic_only:
-                    self._add_finding("storage", {
-                        "type": "storage_https_not_enforced",
-                        "storage_account": account_name,
-                        "resource_group": resource_group,
-                        "description": f"Storage account {account_name} does not enforce HTTPS-only traffic",
-                        "severity": "high",
-                        "recommendation": "Enable 'Secure transfer required' setting",
-                        "mitre": "T1530"
-                    })
+                    self._add_finding(
+                        "storage",
+                        {
+                            "type": "storage_https_not_enforced",
+                            "storage_account": account_name,
+                            "resource_group": resource_group,
+                            "description": f"Storage account {account_name} does not enforce HTTPS-only traffic",
+                            "severity": "high",
+                            "recommendation": "Enable 'Secure transfer required' setting",
+                            "mitre": "T1530",
+                        },
+                    )
 
                 # Check public blob access
                 if account.allow_blob_public_access:
-                    self._add_finding("storage", {
-                        "type": "storage_public_blob_access",
-                        "storage_account": account_name,
-                        "resource_group": resource_group,
-                        "description": f"Storage account {account_name} allows public blob access",
-                        "severity": "critical",
-                        "recommendation": "Disable public blob access at storage account level",
-                        "mitre": "T1530"
-                    })
+                    self._add_finding(
+                        "storage",
+                        {
+                            "type": "storage_public_blob_access",
+                            "storage_account": account_name,
+                            "resource_group": resource_group,
+                            "description": f"Storage account {account_name} allows public blob access",
+                            "severity": "critical",
+                            "recommendation": "Disable public blob access at storage account level",
+                            "mitre": "T1530",
+                        },
+                    )
 
                 # Check encryption
                 if not account.encryption or not account.encryption.services:
-                    self._add_finding("storage", {
-                        "type": "storage_no_encryption",
-                        "storage_account": account_name,
-                        "resource_group": resource_group,
-                        "description": f"Storage account {account_name} encryption status unclear",
-                        "severity": "high",
-                        "recommendation": "Verify encryption at rest is enabled",
-                        "mitre": "T1530"
-                    })
+                    self._add_finding(
+                        "storage",
+                        {
+                            "type": "storage_no_encryption",
+                            "storage_account": account_name,
+                            "resource_group": resource_group,
+                            "description": f"Storage account {account_name} encryption status unclear",
+                            "severity": "high",
+                            "recommendation": "Verify encryption at rest is enabled",
+                            "mitre": "T1530",
+                        },
+                    )
 
                 # Check network rules
                 if account.network_rule_set:
-                    if account.network_rule_set.default_action == 'Allow':
-                        self._add_finding("storage", {
-                            "type": "storage_network_unrestricted",
-                            "storage_account": account_name,
-                            "resource_group": resource_group,
-                            "description": f"Storage account {account_name} allows network access from all networks",
-                            "severity": "high",
-                            "recommendation": "Configure network rules to restrict access",
-                            "mitre": "T1530"
-                        })
+                    if account.network_rule_set.default_action == "Allow":
+                        self._add_finding(
+                            "storage",
+                            {
+                                "type": "storage_network_unrestricted",
+                                "storage_account": account_name,
+                                "resource_group": resource_group,
+                                "description": f"Storage account {account_name} allows network access from all networks",
+                                "severity": "high",
+                                "recommendation": "Configure network rules to restrict access",
+                                "mitre": "T1530",
+                            },
+                        )
 
                 # Check minimum TLS version
-                if hasattr(account, 'minimum_tls_version'):
-                    if account.minimum_tls_version != 'TLS1_2':
-                        self._add_finding("storage", {
-                            "type": "storage_weak_tls",
-                            "storage_account": account_name,
-                            "resource_group": resource_group,
-                            "minimum_tls": account.minimum_tls_version,
-                            "description": f"Storage account {account_name} allows TLS versions older than 1.2",
-                            "severity": "medium",
-                            "recommendation": "Set minimum TLS version to 1.2",
-                            "mitre": "T1530"
-                        })
+                if hasattr(account, "minimum_tls_version"):
+                    if account.minimum_tls_version != "TLS1_2":
+                        self._add_finding(
+                            "storage",
+                            {
+                                "type": "storage_weak_tls",
+                                "storage_account": account_name,
+                                "resource_group": resource_group,
+                                "minimum_tls": account.minimum_tls_version,
+                                "description": f"Storage account {account_name} allows TLS versions older than 1.2",
+                                "severity": "medium",
+                                "recommendation": "Set minimum TLS version to 1.2",
+                                "mitre": "T1530",
+                            },
+                        )
 
-            logger.info(f"[+] Storage account scan complete: {len(storage_accounts)} accounts analyzed")
+            logger.info(
+                f"[+] Storage account scan complete: {len(storage_accounts)} accounts analyzed"
+            )
 
         except AzureError as e:
             logger.error(f"[-] Error scanning storage accounts: {e}")
@@ -224,25 +237,27 @@ class AzureScanner:
 
             for nsg in nsgs:
                 nsg_name = nsg.name
-                resource_group = nsg.id.split('/')[4]
+                resource_group = nsg.id.split("/")[4]
 
                 # Check security rules
                 for rule in nsg.security_rules:
                     # Check for public access
                     is_public = False
-                    if rule.source_address_prefix in ['*', '0.0.0.0/0', 'Internet']:
-                        is_public = True
-                    elif rule.source_address_prefixes and any(
-                        prefix in ['*', '0.0.0.0/0', 'Internet'] for prefix in rule.source_address_prefixes
+                    if rule.source_address_prefix in ["*", "0.0.0.0/0", "Internet"] or (
+                        rule.source_address_prefixes
+                        and any(
+                            prefix in ["*", "0.0.0.0/0", "Internet"]
+                            for prefix in rule.source_address_prefixes
+                        )
                     ):
                         is_public = True
 
-                    if is_public and rule.access == 'Allow' and rule.direction == 'Inbound':
+                    if is_public and rule.access == "Allow" and rule.direction == "Inbound":
                         # Check destination port
                         dest_ports = []
                         if rule.destination_port_range:
-                            if rule.destination_port_range == '*':
-                                dest_ports = ['all']
+                            if rule.destination_port_range == "*":
+                                dest_ports = ["all"]
                             else:
                                 dest_ports = [rule.destination_port_range]
                         if rule.destination_port_ranges:
@@ -250,23 +265,28 @@ class AzureScanner:
 
                         # Determine severity
                         severity = "high"
-                        if 'all' in dest_ports or '*' in dest_ports:
-                            severity = "critical"
-                        elif any(str(port) in str(dest_ports) for port in risky_ports):
+                        if (
+                            "all" in dest_ports
+                            or "*" in dest_ports
+                            or any(str(port) in str(dest_ports) for port in risky_ports)
+                        ):
                             severity = "critical"
 
-                        self._add_finding("network", {
-                            "type": "nsg_public_access",
-                            "nsg_name": nsg_name,
-                            "resource_group": resource_group,
-                            "rule_name": rule.name,
-                            "ports": dest_ports,
-                            "protocol": rule.protocol,
-                            "description": f"NSG {nsg_name} rule '{rule.name}' allows public access on ports {dest_ports}",
-                            "severity": severity,
-                            "recommendation": "Restrict source to specific IP ranges",
-                            "mitre": "T1046"
-                        })
+                        self._add_finding(
+                            "network",
+                            {
+                                "type": "nsg_public_access",
+                                "nsg_name": nsg_name,
+                                "resource_group": resource_group,
+                                "rule_name": rule.name,
+                                "ports": dest_ports,
+                                "protocol": rule.protocol,
+                                "description": f"NSG {nsg_name} rule '{rule.name}' allows public access on ports {dest_ports}",
+                                "severity": severity,
+                                "recommendation": "Restrict source to specific IP ranges",
+                                "mitre": "T1046",
+                            },
+                        )
 
             logger.info(f"[+] NSG scan complete: {len(nsgs)} NSGs analyzed")
 
@@ -290,28 +310,31 @@ class AzureScanner:
 
             for vm in vms:
                 vm_name = vm.name
-                resource_group = vm.id.split('/')[4]
+                resource_group = vm.id.split("/")[4]
 
                 # Check for public IP
                 if vm.network_profile and vm.network_profile.network_interfaces:
                     for nic_ref in vm.network_profile.network_interfaces:
                         nic_id = nic_ref.id
-                        nic_name = nic_id.split('/')[-1]
-                        nic_rg = nic_id.split('/')[4]
+                        nic_name = nic_id.split("/")[-1]
+                        nic_rg = nic_id.split("/")[4]
 
                         try:
                             nic = self.network_client.network_interfaces.get(nic_rg, nic_name)
                             for ip_config in nic.ip_configurations:
                                 if ip_config.public_ip_address:
-                                    self._add_finding("compute", {
-                                        "type": "vm_public_ip",
-                                        "vm_name": vm_name,
-                                        "resource_group": resource_group,
-                                        "description": f"VM {vm_name} has a public IP address",
-                                        "severity": "medium",
-                                        "recommendation": "Use bastion hosts or VPN for access",
-                                        "mitre": "T1580"
-                                    })
+                                    self._add_finding(
+                                        "compute",
+                                        {
+                                            "type": "vm_public_ip",
+                                            "vm_name": vm_name,
+                                            "resource_group": resource_group,
+                                            "description": f"VM {vm_name} has a public IP address",
+                                            "severity": "medium",
+                                            "recommendation": "Use bastion hosts or VPN for access",
+                                            "mitre": "T1580",
+                                        },
+                                    )
                         except HttpResponseError:
                             pass
 
@@ -319,30 +342,36 @@ class AzureScanner:
                 if vm.storage_profile and vm.storage_profile.os_disk:
                     os_disk = vm.storage_profile.os_disk
                     if not os_disk.encryption_settings or not os_disk.encryption_settings.enabled:
-                        self._add_finding("compute", {
-                            "type": "vm_disk_not_encrypted",
-                            "vm_name": vm_name,
-                            "resource_group": resource_group,
-                            "description": f"VM {vm_name} OS disk is not encrypted",
-                            "severity": "high",
-                            "recommendation": "Enable Azure Disk Encryption",
-                            "mitre": "T1530"
-                        })
+                        self._add_finding(
+                            "compute",
+                            {
+                                "type": "vm_disk_not_encrypted",
+                                "vm_name": vm_name,
+                                "resource_group": resource_group,
+                                "description": f"VM {vm_name} OS disk is not encrypted",
+                                "severity": "high",
+                                "recommendation": "Enable Azure Disk Encryption",
+                                "mitre": "T1530",
+                            },
+                        )
 
                 # Check OS profile for password auth (Linux)
-                if vm.os_profile and vm.storage_profile.os_disk.os_type == 'Linux':
+                if vm.os_profile and vm.storage_profile.os_disk.os_type == "Linux":
                     if vm.os_profile.linux_configuration:
                         linux_config = vm.os_profile.linux_configuration
                         if not linux_config.disable_password_authentication:
-                            self._add_finding("compute", {
-                                "type": "vm_password_auth_enabled",
-                                "vm_name": vm_name,
-                                "resource_group": resource_group,
-                                "description": f"Linux VM {vm_name} allows password authentication",
-                                "severity": "medium",
-                                "recommendation": "Disable password authentication and use SSH keys only",
-                                "mitre": "T1078.004"
-                            })
+                            self._add_finding(
+                                "compute",
+                                {
+                                    "type": "vm_password_auth_enabled",
+                                    "vm_name": vm_name,
+                                    "resource_group": resource_group,
+                                    "description": f"Linux VM {vm_name} allows password authentication",
+                                    "severity": "medium",
+                                    "recommendation": "Disable password authentication and use SSH keys only",
+                                    "mitre": "T1078.004",
+                                },
+                            )
 
             logger.info(f"[+] VM scan complete: {len(vms)} VMs analyzed")
 
@@ -364,33 +393,39 @@ class AzureScanner:
 
             for pip in public_ips:
                 pip_name = pip.name
-                resource_group = pip.id.split('/')[4]
+                resource_group = pip.id.split("/")[4]
 
                 # Check if unassociated
                 if not pip.ip_configuration:
-                    self._add_finding("network", {
-                        "type": "public_ip_unassociated",
-                        "public_ip_name": pip_name,
-                        "resource_group": resource_group,
-                        "ip_address": pip.ip_address,
-                        "description": f"Public IP {pip_name} is not associated with any resource",
-                        "severity": "info",
-                        "recommendation": "Delete unused public IPs to reduce attack surface and cost",
-                        "mitre": "T1580"
-                    })
+                    self._add_finding(
+                        "network",
+                        {
+                            "type": "public_ip_unassociated",
+                            "public_ip_name": pip_name,
+                            "resource_group": resource_group,
+                            "ip_address": pip.ip_address,
+                            "description": f"Public IP {pip_name} is not associated with any resource",
+                            "severity": "info",
+                            "recommendation": "Delete unused public IPs to reduce attack surface and cost",
+                            "mitre": "T1580",
+                        },
+                    )
 
                 # Check DDoS protection
                 if pip.ddos_settings and not pip.ddos_settings.protection_mode:
-                    self._add_finding("network", {
-                        "type": "public_ip_no_ddos",
-                        "public_ip_name": pip_name,
-                        "resource_group": resource_group,
-                        "ip_address": pip.ip_address,
-                        "description": f"Public IP {pip_name} does not have DDoS protection enabled",
-                        "severity": "medium",
-                        "recommendation": "Enable DDoS Protection Standard for critical resources",
-                        "mitre": "T1498"
-                    })
+                    self._add_finding(
+                        "network",
+                        {
+                            "type": "public_ip_no_ddos",
+                            "public_ip_name": pip_name,
+                            "resource_group": resource_group,
+                            "ip_address": pip.ip_address,
+                            "description": f"Public IP {pip_name} does not have DDoS protection enabled",
+                            "severity": "medium",
+                            "recommendation": "Enable DDoS Protection Standard for critical resources",
+                            "mitre": "T1498",
+                        },
+                    )
 
             logger.info(f"[+] Public IP scan complete: {len(public_ips)} IPs analyzed")
 
@@ -412,26 +447,29 @@ class AzureScanner:
 
             for disk in disks:
                 disk_name = disk.name
-                resource_group = disk.id.split('/')[4]
+                resource_group = disk.id.split("/")[4]
 
                 # Check encryption
                 if not disk.encryption:
-                    self._add_finding("compute", {
-                        "type": "disk_no_encryption",
-                        "disk_name": disk_name,
-                        "resource_group": resource_group,
-                        "description": f"Managed disk {disk_name} does not have encryption configured",
-                        "severity": "high",
-                        "recommendation": "Enable encryption at rest for all managed disks",
-                        "mitre": "T1530"
-                    })
+                    self._add_finding(
+                        "compute",
+                        {
+                            "type": "disk_no_encryption",
+                            "disk_name": disk_name,
+                            "resource_group": resource_group,
+                            "description": f"Managed disk {disk_name} does not have encryption configured",
+                            "severity": "high",
+                            "recommendation": "Enable encryption at rest for all managed disks",
+                            "mitre": "T1530",
+                        },
+                    )
 
             logger.info(f"[+] Managed disk scan complete: {len(disks)} disks analyzed")
 
         except AzureError as e:
             logger.error(f"[-] Error scanning managed disks: {e}")
 
-    def scan_all(self) -> Dict[str, Any]:
+    def scan_all(self) -> dict[str, Any]:
         """
         Run all Azure security scans.
 
@@ -448,10 +486,12 @@ class AzureScanner:
         self.scan_managed_disks()
 
         logger.info("[+] Azure security scan complete!")
-        logger.info(f"[+] Findings: Critical={self.findings['summary']['critical']}, "
-                   f"High={self.findings['summary']['high']}, "
-                   f"Medium={self.findings['summary']['medium']}, "
-                   f"Low={self.findings['summary']['low']}")
+        logger.info(
+            f"[+] Findings: Critical={self.findings['summary']['critical']}, "
+            f"High={self.findings['summary']['high']}, "
+            f"Medium={self.findings['summary']['medium']}, "
+            f"Low={self.findings['summary']['low']}"
+        )
 
         return self.findings
 
@@ -459,7 +499,7 @@ class AzureScanner:
         """Save scan results to JSON file."""
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(self.findings, f, indent=2)
 
         logger.info(f"[+] Results saved to {output_file}")
@@ -492,26 +532,31 @@ MITRE ATT&CK Mapping:
   T1087.004: Account Discovery - Cloud Account
   T1530: Data from Cloud Storage Object
   T1046: Network Service Scanning
-        """
+        """,
     )
 
-    parser.add_argument('--subscription', help='Azure subscription ID')
-    parser.add_argument('--use-cli-auth', action='store_true', help='Use Azure CLI credentials')
-    parser.add_argument('--scan', nargs='+', choices=['storage', 'network', 'compute', 'rbac'],
-                       help='Specific scans to run')
-    parser.add_argument('--scan-all', action='store_true', help='Run all scans')
-    parser.add_argument('--output', type=Path, default=Path('output/azure_scan.json'),
-                       help='Output file path (default: output/azure_scan.json)')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser.add_argument("--subscription", help="Azure subscription ID")
+    parser.add_argument("--use-cli-auth", action="store_true", help="Use Azure CLI credentials")
+    parser.add_argument(
+        "--scan",
+        nargs="+",
+        choices=["storage", "network", "compute", "rbac"],
+        help="Specific scans to run",
+    )
+    parser.add_argument("--scan-all", action="store_true", help="Run all scans")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("output/azure_scan.json"),
+        help="Output file path (default: output/azure_scan.json)",
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
     # Configure logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(message)s")
 
     print("""
     ╔═══════════════════════════════════════════════════════════╗
@@ -526,12 +571,12 @@ MITRE ATT&CK Mapping:
         if args.scan_all:
             scanner.scan_all()
         elif args.scan:
-            if 'storage' in args.scan:
+            if "storage" in args.scan:
                 scanner.scan_storage_accounts()
-            if 'network' in args.scan:
+            if "network" in args.scan:
                 scanner.scan_network_security_groups()
                 scanner.scan_public_ips()
-            if 'compute' in args.scan:
+            if "compute" in args.scan:
                 scanner.scan_virtual_machines()
                 scanner.scan_managed_disks()
         else:
@@ -549,4 +594,5 @@ MITRE ATT&CK Mapping:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

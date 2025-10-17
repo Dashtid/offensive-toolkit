@@ -28,15 +28,13 @@ Date: 2025-10-15
 import argparse
 import json
 import sys
-import base64
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from collections import defaultdict
-import io
+from typing import Any
 
-from utils.logger import get_logger
 from utils.config import load_config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -49,13 +47,7 @@ class ReportGenerator:
     """
 
     # Severity mapping for vulnerabilities
-    SEVERITY_SCORES = {
-        "critical": 5,
-        "high": 4,
-        "medium": 3,
-        "low": 2,
-        "info": 1
-    }
+    SEVERITY_SCORES = {"critical": 5, "high": 4, "medium": 3, "low": 2, "info": 1}
 
     # MITRE ATT&CK tactics
     MITRE_TACTICS = {
@@ -71,10 +63,10 @@ class ReportGenerator:
         "TA0009": "Collection",
         "TA0010": "Exfiltration",
         "TA0011": "Command and Control",
-        "TA0040": "Impact"
+        "TA0040": "Impact",
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """Initialize report generator."""
         self.config = config or load_config()
         self.scan_results = []
@@ -85,11 +77,11 @@ class ReportGenerator:
             "by_severity": defaultdict(int),
             "by_type": defaultdict(int),
             "targets": set(),
-            "techniques": set()
+            "techniques": set(),
         }
         logger.info("Initialized ReportGenerator")
 
-    def load_scan_results(self, scan_files: List[Path]) -> None:
+    def load_scan_results(self, scan_files: list[Path]) -> None:
         """
         Load scan results from JSON files.
 
@@ -98,14 +90,16 @@ class ReportGenerator:
         """
         for scan_file in scan_files:
             try:
-                with open(scan_file, "r") as f:
+                with open(scan_file) as f:
                     data = json.load(f)
 
-                self.scan_results.append({
-                    "file": scan_file.name,
-                    "data": data,
-                    "type": self._detect_scan_type(scan_file.name, data)
-                })
+                self.scan_results.append(
+                    {
+                        "file": scan_file.name,
+                        "data": data,
+                        "type": self._detect_scan_type(scan_file.name, data),
+                    }
+                )
 
                 self.statistics["total_scans"] += 1
                 self._extract_statistics(data)
@@ -115,26 +109,25 @@ class ReportGenerator:
             except Exception as e:
                 logger.error(f"Error loading {scan_file}: {e}")
 
-    def _detect_scan_type(self, filename: str, data: Dict[str, Any]) -> str:
+    def _detect_scan_type(self, filename: str, data: dict[str, Any]) -> str:
         """Detect scan type from filename and data."""
         if "dns_" in filename or "domain" in data:
             return "DNS Resolution"
-        elif "subdomains_" in filename or "subdomains" in data:
+        if "subdomains_" in filename or "subdomains" in data:
             return "Subdomain Enumeration"
-        elif "whois_" in filename or "parsed" in data and "registrar" in data.get("parsed", {}):
+        if "whois_" in filename or ("parsed" in data and "registrar" in data.get("parsed", {})):
             return "WHOIS Lookup"
-        elif "portscan_" in filename or "total_ports_scanned" in data:
+        if "portscan_" in filename or "total_ports_scanned" in data:
             return "Port Scan"
-        elif "sqli_" in filename or "injection_types" in data:
+        if "sqli_" in filename or "injection_types" in data:
             return "SQL Injection"
-        elif "xss_" in filename or "payloads_tested" in data:
+        if "xss_" in filename or "payloads_tested" in data:
             return "XSS Scan"
-        elif "directory_" in filename or "wordlist" in data:
+        if "directory_" in filename or "wordlist" in data:
             return "Directory Brute-force"
-        else:
-            return "Unknown Scan"
+        return "Unknown Scan"
 
-    def _extract_statistics(self, data: Dict[str, Any]) -> None:
+    def _extract_statistics(self, data: dict[str, Any]) -> None:
         """Extract statistics from scan data."""
         # Extract target
         for key in ["target", "url", "domain"]:
@@ -162,8 +155,7 @@ class ReportGenerator:
 
         # Extract open ports
         if "results" in data and "total_ports_scanned" in data:
-            open_ports = [p for p, info in data["results"].items()
-                         if info.get("status") == "open"]
+            open_ports = [p for p, info in data["results"].items() if info.get("status") == "open"]
             if open_ports:
                 self.statistics["by_type"]["open_port"] += len(open_ports)
 
@@ -402,31 +394,35 @@ class ReportGenerator:
             vulnerability_summary=vulnerability_summary,
             severity_chart=severity_chart,
             scan_details=scan_details,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def _generate_executive_summary_html(self) -> str:
         """Generate executive summary section."""
-        targets = ", ".join(sorted(self.statistics["targets"])) if self.statistics["targets"] else "Multiple targets"
+        targets = (
+            ", ".join(sorted(self.statistics["targets"]))
+            if self.statistics["targets"]
+            else "Multiple targets"
+        )
 
         return f"""
         <div class="section">
             <h2>Executive Summary</h2>
             <div class="stat-grid">
                 <div class="stat-card">
-                    <div class="stat-number">{self.statistics['total_scans']}</div>
+                    <div class="stat-number">{self.statistics["total_scans"]}</div>
                     <div class="stat-label">Total Scans</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{self.statistics['total_vulnerabilities']}</div>
+                    <div class="stat-number">{self.statistics["total_vulnerabilities"]}</div>
                     <div class="stat-label">Vulnerabilities Found</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{len(self.statistics['targets'])}</div>
+                    <div class="stat-number">{len(self.statistics["targets"])}</div>
                     <div class="stat-label">Targets Assessed</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{len(self.statistics['by_type'])}</div>
+                    <div class="stat-number">{len(self.statistics["by_type"])}</div>
                     <div class="stat-label">Finding Types</div>
                 </div>
             </div>
@@ -449,7 +445,7 @@ class ReportGenerator:
         sorted_vulns = sorted(
             self.vulnerabilities,
             key=lambda v: self.SEVERITY_SCORES.get(v.get("confidence", "low").lower(), 0),
-            reverse=True
+            reverse=True,
         )
 
         rows = []
@@ -498,39 +494,41 @@ class ReportGenerator:
             sections.append(f"""
             <div class="section">
                 <h2>{scan_type}</h2>
-                <p><span class="scan-type">{scan['file']}</span></p>
+                <p><span class="scan-type">{scan["file"]}</span></p>
                 {self._format_scan_data(scan_type, data)}
             </div>
             """)
 
         return "\n".join(sections)
 
-    def _format_scan_data(self, scan_type: str, data: Dict[str, Any]) -> str:
+    def _format_scan_data(self, scan_type: str, data: dict[str, Any]) -> str:
         """Format scan data based on type."""
         if scan_type == "Port Scan":
             return self._format_port_scan(data)
-        elif scan_type == "DNS Resolution":
+        if scan_type == "DNS Resolution":
             return self._format_dns_scan(data)
-        elif scan_type == "Subdomain Enumeration":
+        if scan_type == "Subdomain Enumeration":
             return self._format_subdomain_scan(data)
-        elif scan_type in ["SQL Injection", "XSS Scan"]:
+        if scan_type in ["SQL Injection", "XSS Scan"]:
             return self._format_vulnerability_scan(data)
-        else:
-            return f"<pre>{json.dumps(data, indent=2)[:500]}...</pre>"
+        return f"<pre>{json.dumps(data, indent=2)[:500]}...</pre>"
 
-    def _format_port_scan(self, data: Dict[str, Any]) -> str:
+    def _format_port_scan(self, data: dict[str, Any]) -> str:
         """Format port scan results."""
-        open_ports = [(p, info) for p, info in data.get("results", {}).items()
-                     if info.get("status") == "open"]
+        open_ports = [
+            (p, info) for p, info in data.get("results", {}).items() if info.get("status") == "open"
+        ]
 
         if not open_ports:
             return "<p>No open ports found.</p>"
 
-        rows = [f"<tr><td>{port}</td><td>{info.get('service', 'Unknown')}</td></tr>"
-                for port, info in open_ports]
+        rows = [
+            f"<tr><td>{port}</td><td>{info.get('service', 'Unknown')}</td></tr>"
+            for port, info in open_ports
+        ]
 
         return f"""
-        <p><strong>Target:</strong> {data.get('target', 'Unknown')}</p>
+        <p><strong>Target:</strong> {data.get("target", "Unknown")}</p>
         <p><strong>Open Ports:</strong> {len(open_ports)}</p>
         <table>
             <tr><th>Port</th><th>Service</th></tr>
@@ -538,7 +536,7 @@ class ReportGenerator:
         </table>
         """
 
-    def _format_dns_scan(self, data: Dict[str, Any]) -> str:
+    def _format_dns_scan(self, data: dict[str, Any]) -> str:
         """Format DNS scan results."""
         records = data.get("records", {})
 
@@ -548,14 +546,14 @@ class ReportGenerator:
                 rows.append(f"<tr><td>{record_type}</td><td>{', '.join(values)}</td></tr>")
 
         return f"""
-        <p><strong>Domain:</strong> {data.get('domain', 'Unknown')}</p>
+        <p><strong>Domain:</strong> {data.get("domain", "Unknown")}</p>
         <table>
             <tr><th>Record Type</th><th>Values</th></tr>
             {"".join(rows)}
         </table>
         """
 
-    def _format_subdomain_scan(self, data: Dict[str, Any]) -> str:
+    def _format_subdomain_scan(self, data: dict[str, Any]) -> str:
         """Format subdomain scan results."""
         subdomains = data.get("subdomains", [])
 
@@ -565,12 +563,12 @@ class ReportGenerator:
         subdomain_list = "<br>".join(subdomains[:50])
 
         return f"""
-        <p><strong>Domain:</strong> {data.get('domain', 'Unknown')}</p>
+        <p><strong>Domain:</strong> {data.get("domain", "Unknown")}</p>
         <p><strong>Found:</strong> {len(subdomains)} subdomains (showing 50)</p>
         <p>{subdomain_list}</p>
         """
 
-    def _format_vulnerability_scan(self, data: Dict[str, Any]) -> str:
+    def _format_vulnerability_scan(self, data: dict[str, Any]) -> str:
         """Format vulnerability scan results."""
         vulns = data.get("vulnerabilities", [])
 
@@ -581,16 +579,16 @@ class ReportGenerator:
         for vuln in vulns[:20]:
             rows.append(f"""
                 <tr>
-                    <td>{vuln.get('type', 'Unknown')}</td>
-                    <td>{vuln.get('parameter', 'N/A')}</td>
-                    <td><span class="severity-{vuln.get('confidence', 'low').lower()}">
-                        {vuln.get('confidence', 'low').upper()}
+                    <td>{vuln.get("type", "Unknown")}</td>
+                    <td>{vuln.get("parameter", "N/A")}</td>
+                    <td><span class="severity-{vuln.get("confidence", "low").lower()}">
+                        {vuln.get("confidence", "low").upper()}
                     </span></td>
                 </tr>
             """)
 
         return f"""
-        <p><strong>Target:</strong> {data.get('url', 'Unknown')}</p>
+        <p><strong>Target:</strong> {data.get("url", "Unknown")}</p>
         <p><strong>Vulnerabilities Found:</strong> {len(vulns)}</p>
         <table>
             <tr><th>Type</th><th>Parameter</th><th>Severity</th></tr>
@@ -618,7 +616,7 @@ class ReportGenerator:
                         <span class="severity-{severity}">{severity.upper()}</span>
                     </div>
                     <div style="flex: 1; background: #e9ecef; border-radius: 4px; height: 30px; position: relative;">
-                        <div style="background: {'#dc3545' if severity == 'critical' else '#fd7e14' if severity == 'high' else '#ffc107' if severity == 'medium' else '#28a745'};
+                        <div style="background: {"#dc3545" if severity == "critical" else "#fd7e14" if severity == "high" else "#ffc107" if severity == "medium" else "#28a745"};
                                     width: {percentage}%; height: 100%; border-radius: 4px;
                                     display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
                             {count}
@@ -628,7 +626,7 @@ class ReportGenerator:
             </div>
             """
 
-        chart_html += '</div></div>'
+        chart_html += "</div></div>"
         return chart_html
 
     def _generate_recommendations_html(self) -> str:
@@ -643,7 +641,7 @@ class ReportGenerator:
             "Conduct regular security assessments and penetration testing",
             "Establish a vulnerability management program with defined SLAs",
             "Implement security monitoring and logging for detection capabilities",
-            "Provide security awareness training for development and operations teams"
+            "Provide security awareness training for development and operations teams",
         ]
 
         rec_list = "\n".join([f"<li>{rec}</li>" for rec in recommendations])
@@ -663,24 +661,20 @@ class ReportGenerator:
             "metadata": {
                 "generated": datetime.now().isoformat(),
                 "toolkit": "Offensive Security Toolkit",
-                "version": "0.2.0"
+                "version": "0.2.0",
             },
             "statistics": {
                 "total_scans": self.statistics["total_scans"],
                 "total_vulnerabilities": self.statistics["total_vulnerabilities"],
                 "by_severity": dict(self.statistics["by_severity"]),
                 "by_type": dict(self.statistics["by_type"]),
-                "targets": list(self.statistics["targets"])
+                "targets": list(self.statistics["targets"]),
             },
             "vulnerabilities": self.vulnerabilities,
             "scans": [
-                {
-                    "file": scan["file"],
-                    "type": scan["type"],
-                    "data": scan["data"]
-                }
+                {"file": scan["file"], "type": scan["type"], "data": scan["data"]}
                 for scan in self.scan_results
-            ]
+            ],
         }
 
         try:
@@ -697,38 +691,22 @@ def main() -> int:
     """Main entry point for command-line usage."""
     parser = argparse.ArgumentParser(
         description="Report Generator - Security Testing Reports",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("--input-dir", type=Path, help="Directory containing scan result files")
+
+    parser.add_argument("--scan-files", nargs="+", type=Path, help="Specific scan files to include")
+
+    parser.add_argument(
+        "--format", default="html", help="Output format: html, json, or html,json (comma-separated)"
     )
 
     parser.add_argument(
-        "--input-dir",
-        type=Path,
-        help="Directory containing scan result files"
+        "--output", default="security_report", help="Output filename (without extension)"
     )
 
-    parser.add_argument(
-        "--scan-files",
-        nargs="+",
-        type=Path,
-        help="Specific scan files to include"
-    )
-
-    parser.add_argument(
-        "--format",
-        default="html",
-        help="Output format: html, json, or html,json (comma-separated)"
-    )
-
-    parser.add_argument(
-        "--output",
-        default="security_report",
-        help="Output filename (without extension)"
-    )
-
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
     args = parser.parse_args()
 
@@ -773,13 +751,13 @@ def main() -> int:
         output_path = Path(f"{args.output}.{fmt}")
 
         if fmt == "html":
-            print(f"[*] Generating HTML report...")
+            print("[*] Generating HTML report...")
             success = generator.generate_html_report(output_path) and success
             if success:
                 print(f"[+] HTML report: {output_path}")
 
         elif fmt == "json":
-            print(f"[*] Generating JSON report...")
+            print("[*] Generating JSON report...")
             success = generator.generate_json_report(output_path) and success
             if success:
                 print(f"[+] JSON report: {output_path}")
@@ -789,13 +767,13 @@ def main() -> int:
             success = False
 
     # Print summary
-    print(f"\n[+] Report Summary:")
+    print("\n[+] Report Summary:")
     print(f"    Total Scans: {generator.statistics['total_scans']}")
     print(f"    Vulnerabilities: {generator.statistics['total_vulnerabilities']}")
     print(f"    Targets: {len(generator.statistics['targets'])}")
 
     if generator.statistics["by_severity"]:
-        print(f"\n[+] By Severity:")
+        print("\n[+] By Severity:")
         for severity in ["critical", "high", "medium", "low"]:
             count = generator.statistics["by_severity"].get(severity, 0)
             if count > 0:

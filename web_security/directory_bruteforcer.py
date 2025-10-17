@@ -19,14 +19,14 @@ MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
 
 import argparse
 import sys
-import requests
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin
 
-from utils.logger import get_logger
+import requests
+
 from utils.config import load_config
-from utils.helpers import validate_target, check_authorization, RateLimiter
+from utils.helpers import RateLimiter, check_authorization, validate_target
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -38,19 +38,17 @@ class DirectoryBruteforcer:
     [!] This is a TEMPLATE for educational purposes.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """Initialize the directory brute-forcer."""
         self.config = config or load_config()
         self.rate_limiter = RateLimiter(
             self.config.get("rate_limit", {}).get("requests_per_second", 10)
         )
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": self.config.get("user_agent", "Mozilla/5.0")
-        })
+        self.session.headers.update({"User-Agent": self.config.get("user_agent", "Mozilla/5.0")})
         logger.info(f"Initialized {self.__class__.__name__}")
 
-    def test_path(self, base_url: str, path: str) -> Optional[Dict[str, Any]]:
+    def test_path(self, base_url: str, path: str) -> dict[str, Any] | None:
         """
         Test if a path exists on the web server.
 
@@ -74,7 +72,7 @@ class DirectoryBruteforcer:
                     "url": url,
                     "status_code": response.status_code,
                     "content_length": len(response.content),
-                    "redirect": response.headers.get("Location")
+                    "redirect": response.headers.get("Location"),
                 }
 
         except requests.RequestException as e:
@@ -82,7 +80,7 @@ class DirectoryBruteforcer:
 
         return None
 
-    def run(self, target: str, wordlist_path: str) -> Dict[str, Any]:
+    def run(self, target: str, wordlist_path: str) -> dict[str, Any]:
         """
         Execute directory brute-force attack.
 
@@ -125,16 +123,16 @@ class DirectoryBruteforcer:
             "target": target,
             "paths_tested": len(wordlist),
             "paths_found": len(results),
-            "results": results
+            "results": results,
         }
 
         logger.info(f"Brute-force complete: {len(results)} paths found")
         return summary
 
-    def _load_wordlist(self, wordlist_path: str) -> List[str]:
+    def _load_wordlist(self, wordlist_path: str) -> list[str]:
         """Load wordlist from file."""
         try:
-            with open(wordlist_path, "r") as f:
+            with open(wordlist_path) as f:
                 return [line.strip() for line in f if line.strip()]
         except Exception as e:
             logger.error(f"Error loading wordlist: {e}")
@@ -143,9 +141,7 @@ class DirectoryBruteforcer:
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Directory Brute-Forcer - Web Path Discovery"
-    )
+    parser = argparse.ArgumentParser(description="Directory Brute-Forcer - Web Path Discovery")
     parser.add_argument("--target", required=True, help="Target URL")
     parser.add_argument("--wordlist", required=True, help="Path to wordlist file")
     parser.add_argument("--rate-limit", type=float, default=10.0, help="Requests per second")
@@ -166,7 +162,7 @@ def main() -> int:
         print(f"[-] Error: {results['error']}")
         return 1
 
-    print(f"\n[+] Summary:")
+    print("\n[+] Summary:")
     print(f"    Paths Tested: {results['paths_tested']}")
     print(f"    Paths Found: {results['paths_found']}")
 

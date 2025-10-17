@@ -11,10 +11,8 @@ Date: 2025-10-15
 
 import logging
 import sys
-from pathlib import Path
-from typing import Optional
 from logging.handlers import RotatingFileHandler
-
+from pathlib import Path
 
 # Default configuration
 DEFAULT_LOG_LEVEL = logging.INFO
@@ -29,7 +27,7 @@ BACKUP_COUNT = 5
 def setup_logger(
     name: str = "offensive_toolkit",
     log_level: int = DEFAULT_LOG_LEVEL,
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     console: bool = True,
     file_output: bool = True,
 ) -> logging.Logger:
@@ -137,7 +135,7 @@ def set_log_level(logger: logging.Logger, level: str) -> None:
         handler.setLevel(numeric_level)
 
 
-def sanitize_log_message(message: str, sensitive_patterns: Optional[list] = None) -> str:
+def sanitize_log_message(message: str, sensitive_patterns: list | None = None) -> str:
     """
     Sanitize log messages to remove sensitive information.
 

@@ -12,7 +12,7 @@ import ipaddress
 import re
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any
 from urllib.parse import urlparse
 
 from utils.logger import get_logger
@@ -158,9 +158,7 @@ def validate_url(url: str) -> bool:
 
 
 def check_authorization(
-    target: str,
-    config: Optional[Dict[str, Any]] = None,
-    interactive: bool = True
+    target: str, config: dict[str, Any] | None = None, interactive: bool = True
 ) -> bool:
     """
     Check if target is authorized for testing.
@@ -203,9 +201,7 @@ def check_authorization(
     logger.warning(f"Target {target} not in authorized targets file")
 
     # If interactive confirmation is enabled
-    require_confirmation = config.get("authorization", {}).get(
-        "require_confirmation", True
-    )
+    require_confirmation = config.get("authorization", {}).get("require_confirmation", True)
 
     if interactive and require_confirmation:
         return prompt_authorization(target)
@@ -213,7 +209,7 @@ def check_authorization(
     return False
 
 
-def load_authorized_targets(file_path: str) -> List[str]:
+def load_authorized_targets(file_path: str) -> list[str]:
     """
     Load authorized targets from file.
 
@@ -236,7 +232,7 @@ def load_authorized_targets(file_path: str) -> List[str]:
         return targets
 
     try:
-        with open(targets_file, "r") as f:
+        with open(targets_file) as f:
             for line in f:
                 # Remove comments and whitespace
                 line = line.split("#")[0].strip()
@@ -251,7 +247,7 @@ def load_authorized_targets(file_path: str) -> List[str]:
     return targets
 
 
-def is_target_authorized(target: str, authorized_targets: List[str]) -> bool:
+def is_target_authorized(target: str, authorized_targets: list[str]) -> bool:
     """
     Check if target matches any authorized target pattern.
 
@@ -326,10 +322,9 @@ def prompt_authorization(target: str) -> bool:
         print("[+] User confirmed authorization")
         logger.warning(f"User confirmed authorization for {target}")
         return True
-    else:
-        print("[-] Authorization not confirmed. Exiting.")
-        logger.info(f"User declined authorization for {target}")
-        return False
+    print("[-] Authorization not confirmed. Exiting.")
+    logger.info(f"User declined authorization for {target}")
+    return False
 
 
 class RateLimiter:
@@ -403,7 +398,9 @@ def rate_limit(requests_per_second: float = 10.0):
         def wrapper(*args, **kwargs):
             limiter.wait()
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -443,14 +440,14 @@ def sanitize_filename(filename: str) -> str:
         'report_scriptalertscript.html'
     """
     # Remove dangerous characters
-    dangerous_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
+    dangerous_chars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"]
     sanitized = filename
 
     for char in dangerous_chars:
-        sanitized = sanitized.replace(char, '')
+        sanitized = sanitized.replace(char, "")
 
     # Remove leading/trailing dots and spaces
-    sanitized = sanitized.strip('. ')
+    sanitized = sanitized.strip(". ")
 
     # Ensure filename is not empty
     if not sanitized:
@@ -485,7 +482,7 @@ if __name__ == "__main__":
 
     # Test filename sanitization
     print("\n[+] Testing filename sanitization:")
-    print(f"  Original: report_<script>.html")
+    print("  Original: report_<script>.html")
     print(f"  Sanitized: {sanitize_filename('report_<script>.html')}")
 
     print("\n[+] Helper functions test complete")

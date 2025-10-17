@@ -25,16 +25,15 @@ Author: David Dashti
 License: Educational/Research Use Only
 """
 
-import requests
 import json
 import logging
 import time
-import urllib.parse
-from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse, urljoin
-import re
+from typing import Any
+from urllib.parse import urljoin
+
+import requests
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ class APIFuzzer:
     - Security misconfiguration detection (API8:2023)
     """
 
-    def __init__(self, base_url: str, headers: Optional[Dict[str, str]] = None):
+    def __init__(self, base_url: str, headers: dict[str, str] | None = None):
         """
         Initialize API fuzzer.
 
@@ -62,7 +61,7 @@ class APIFuzzer:
             base_url: Base URL of the API
             headers: Default headers to include in all requests
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.headers = headers or {}
         self.session = requests.Session()
         self.session.headers.update(self.headers)
@@ -71,7 +70,7 @@ class APIFuzzer:
             "scan_metadata": {
                 "timestamp": datetime.utcnow().isoformat(),
                 "scanner": "APIFuzzer",
-                "target_url": self.base_url
+                "target_url": self.base_url,
             },
             "endpoints_tested": [],
             "bola": [],
@@ -81,18 +80,12 @@ class APIFuzzer:
             "bfla": [],
             "ssrf": [],
             "misconfig": [],
-            "summary": {
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0,
-                "info": 0
-            }
+            "summary": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
         }
 
         logger.info(f"[+] API fuzzer initialized for {self.base_url}")
 
-    def _add_finding(self, category: str, finding: Dict[str, Any]) -> None:
+    def _add_finding(self, category: str, finding: dict[str, Any]) -> None:
         """Add finding and update severity counts."""
         self.findings[category].append(finding)
         severity = finding.get("severity", "info")
@@ -102,12 +95,12 @@ class APIFuzzer:
         self,
         method: str,
         path: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        timeout: int = 10
-    ) -> Optional[requests.Response]:
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        timeout: int = 10,
+    ) -> requests.Response | None:
         """Make HTTP request with error handling."""
         url = urljoin(self.base_url, path)
 
@@ -120,14 +113,16 @@ class APIFuzzer:
                 data=data,
                 json=json_data,
                 timeout=timeout,
-                allow_redirects=False
+                allow_redirects=False,
             )
             return response
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request error for {method} {url}: {e}")
             return None
 
-    def test_bola(self, endpoint: str, id_param: str = "id", test_ids: Optional[List[int]] = None) -> None:
+    def test_bola(
+        self, endpoint: str, id_param: str = "id", test_ids: list[int] | None = None
+    ) -> None:
         """
         Test for Broken Object Level Authorization (BOLA/IDOR) - API1:2023.
 
@@ -160,15 +155,18 @@ class APIFuzzer:
                 try:
                     data = response_no_auth.json()
                     if data and isinstance(data, dict):
-                        self._add_finding("bola", {
-                            "type": "bola_no_auth_required",
-                            "endpoint": test_endpoint,
-                            "description": f"Endpoint {test_endpoint} returns data without authentication",
-                            "severity": "critical",
-                            "owasp": "API1:2023",
-                            "recommendation": "Implement proper authentication and authorization checks",
-                            "mitre": "T1190"
-                        })
+                        self._add_finding(
+                            "bola",
+                            {
+                                "type": "bola_no_auth_required",
+                                "endpoint": test_endpoint,
+                                "description": f"Endpoint {test_endpoint} returns data without authentication",
+                                "severity": "critical",
+                                "owasp": "API1:2023",
+                                "recommendation": "Implement proper authentication and authorization checks",
+                                "mitre": "T1190",
+                            },
+                        )
                 except (json.JSONDecodeError, ValueError):
                     pass
 
@@ -176,7 +174,7 @@ class APIFuzzer:
             if response_auth and response_auth.status_code == 200:
                 baseline_responses[test_id] = {
                     "status": response_auth.status_code,
-                    "content_length": len(response_auth.content)
+                    "content_length": len(response_auth.content),
                 }
 
         # Test horizontal privilege escalation
@@ -184,21 +182,26 @@ class APIFuzzer:
             # Check if all IDs return similar response sizes (indicating no proper authz)
             content_lengths = [r["content_length"] for r in baseline_responses.values()]
             if len(set(content_lengths)) == 1:
-                self._add_finding("bola", {
-                    "type": "bola_horizontal_privilege_escalation",
-                    "endpoint": endpoint,
-                    "tested_ids": list(baseline_responses.keys()),
-                    "description": f"Endpoint {endpoint} allows accessing all object IDs with same credentials",
-                    "severity": "high",
-                    "owasp": "API1:2023",
-                    "recommendation": "Implement object-level authorization checks",
-                    "mitre": "T1190"
-                })
+                self._add_finding(
+                    "bola",
+                    {
+                        "type": "bola_horizontal_privilege_escalation",
+                        "endpoint": endpoint,
+                        "tested_ids": list(baseline_responses.keys()),
+                        "description": f"Endpoint {endpoint} allows accessing all object IDs with same credentials",
+                        "severity": "high",
+                        "owasp": "API1:2023",
+                        "recommendation": "Implement object-level authorization checks",
+                        "mitre": "T1190",
+                    },
+                )
 
         self.findings["endpoints_tested"].append(endpoint)
         logger.info(f"[+] BOLA testing complete for {endpoint}")
 
-    def test_broken_authentication(self, login_endpoint: str, test_credentials: List[Tuple[str, str]]) -> None:
+    def test_broken_authentication(
+        self, login_endpoint: str, test_credentials: list[tuple[str, str]]
+    ) -> None:
         """
         Test for Broken Authentication - API2:2023.
 
@@ -215,62 +218,69 @@ class APIFuzzer:
         failed_attempts = 0
         for username, password in test_credentials[:20]:  # Test 20 attempts
             response = self._make_request(
-                "POST",
-                login_endpoint,
-                json_data={"username": username, "password": password}
+                "POST", login_endpoint, json_data={"username": username, "password": password}
             )
             if response and response.status_code in [401, 403]:
                 failed_attempts += 1
                 time.sleep(0.1)  # Small delay
 
         if failed_attempts >= 10:
-            self._add_finding("broken_auth", {
-                "type": "auth_no_rate_limit",
-                "endpoint": login_endpoint,
-                "description": f"Authentication endpoint {login_endpoint} has no rate limiting (tested {failed_attempts} failed attempts)",
-                "severity": "high",
-                "owasp": "API2:2023",
-                "recommendation": "Implement rate limiting and account lockout mechanisms",
-                "mitre": "T1110"
-            })
+            self._add_finding(
+                "broken_auth",
+                {
+                    "type": "auth_no_rate_limit",
+                    "endpoint": login_endpoint,
+                    "description": f"Authentication endpoint {login_endpoint} has no rate limiting (tested {failed_attempts} failed attempts)",
+                    "severity": "high",
+                    "owasp": "API2:2023",
+                    "recommendation": "Implement rate limiting and account lockout mechanisms",
+                    "mitre": "T1110",
+                },
+            )
 
         # Test 2: Weak password policy
         weak_passwords = ["password", "123456", "admin", "test", ""]
         for weak_pass in weak_passwords:
             response = self._make_request(
-                "POST",
-                login_endpoint,
-                json_data={"username": "admin", "password": weak_pass}
+                "POST", login_endpoint, json_data={"username": "admin", "password": weak_pass}
             )
             if response and response.status_code == 200:
-                self._add_finding("broken_auth", {
-                    "type": "auth_weak_password_accepted",
-                    "endpoint": login_endpoint,
-                    "weak_password": weak_pass,
-                    "description": f"Weak password '{weak_pass}' accepted at {login_endpoint}",
-                    "severity": "critical",
-                    "owasp": "API2:2023",
-                    "recommendation": "Enforce strong password policies",
-                    "mitre": "T1110"
-                })
+                self._add_finding(
+                    "broken_auth",
+                    {
+                        "type": "auth_weak_password_accepted",
+                        "endpoint": login_endpoint,
+                        "weak_password": weak_pass,
+                        "description": f"Weak password '{weak_pass}' accepted at {login_endpoint}",
+                        "severity": "critical",
+                        "owasp": "API2:2023",
+                        "recommendation": "Enforce strong password policies",
+                        "mitre": "T1110",
+                    },
+                )
 
         # Test 3: JWT token weak secrets
-        response = self._make_request("POST", login_endpoint, json_data={"username": "test", "password": "test"})
+        response = self._make_request(
+            "POST", login_endpoint, json_data={"username": "test", "password": "test"}
+        )
         if response and response.status_code == 200:
-            auth_header = response.headers.get('Authorization', '')
-            if 'Bearer' in auth_header:
+            auth_header = response.headers.get("Authorization", "")
+            if "Bearer" in auth_header:
                 # Check for JWT
-                token = auth_header.replace('Bearer ', '')
-                if token.count('.') == 2:  # Valid JWT structure
-                    self._add_finding("broken_auth", {
-                        "type": "auth_jwt_detected",
-                        "endpoint": login_endpoint,
-                        "description": f"JWT token detected - recommend checking for weak secrets",
-                        "severity": "info",
-                        "owasp": "API2:2023",
-                        "recommendation": "Ensure JWT uses strong secrets (HS256) or public-key cryptography (RS256)",
-                        "mitre": "T1212"
-                    })
+                token = auth_header.replace("Bearer ", "")
+                if token.count(".") == 2:  # Valid JWT structure
+                    self._add_finding(
+                        "broken_auth",
+                        {
+                            "type": "auth_jwt_detected",
+                            "endpoint": login_endpoint,
+                            "description": "JWT token detected - recommend checking for weak secrets",
+                            "severity": "info",
+                            "owasp": "API2:2023",
+                            "recommendation": "Ensure JWT uses strong secrets (HS256) or public-key cryptography (RS256)",
+                            "mitre": "T1212",
+                        },
+                    )
 
         # Test 4: Authentication bypass attempts
         bypass_payloads = [
@@ -282,21 +292,26 @@ class APIFuzzer:
         for payload in bypass_payloads:
             response = self._make_request("POST", login_endpoint, json_data=payload)
             if response and response.status_code == 200:
-                self._add_finding("broken_auth", {
-                    "type": "auth_bypass_possible",
-                    "endpoint": login_endpoint,
-                    "payload": str(payload),
-                    "description": f"Possible authentication bypass with payload: {payload}",
-                    "severity": "critical",
-                    "owasp": "API2:2023",
-                    "recommendation": "Implement proper input validation and parameterized queries",
-                    "mitre": "T1190"
-                })
+                self._add_finding(
+                    "broken_auth",
+                    {
+                        "type": "auth_bypass_possible",
+                        "endpoint": login_endpoint,
+                        "payload": str(payload),
+                        "description": f"Possible authentication bypass with payload: {payload}",
+                        "severity": "critical",
+                        "owasp": "API2:2023",
+                        "recommendation": "Implement proper input validation and parameterized queries",
+                        "mitre": "T1190",
+                    },
+                )
 
         self.findings["endpoints_tested"].append(login_endpoint)
         logger.info(f"[+] Authentication testing complete for {login_endpoint}")
 
-    def test_excessive_data_exposure(self, endpoint: str, sensitive_fields: Optional[List[str]] = None) -> None:
+    def test_excessive_data_exposure(
+        self, endpoint: str, sensitive_fields: list[str] | None = None
+    ) -> None:
         """
         Test for Excessive Data Exposure - API3:2023.
 
@@ -310,8 +325,16 @@ class APIFuzzer:
 
         if sensitive_fields is None:
             sensitive_fields = [
-                "password", "ssn", "social_security", "credit_card", "card_number",
-                "cvv", "api_key", "secret", "token", "private_key"
+                "password",
+                "ssn",
+                "social_security",
+                "credit_card",
+                "card_number",
+                "cvv",
+                "api_key",
+                "secret",
+                "token",
+                "private_key",
             ]
 
         response = self._make_request("GET", endpoint)
@@ -328,16 +351,19 @@ class APIFuzzer:
                             found_sensitive.append(key)
 
                     if found_sensitive:
-                        self._add_finding("data_exposure", {
-                            "type": "data_excessive_exposure",
-                            "endpoint": endpoint,
-                            "sensitive_fields": found_sensitive,
-                            "description": f"Endpoint {endpoint} returns sensitive fields: {found_sensitive}",
-                            "severity": "high",
-                            "owasp": "API3:2023",
-                            "recommendation": "Filter response data to only include necessary fields",
-                            "mitre": "T1190"
-                        })
+                        self._add_finding(
+                            "data_exposure",
+                            {
+                                "type": "data_excessive_exposure",
+                                "endpoint": endpoint,
+                                "sensitive_fields": found_sensitive,
+                                "description": f"Endpoint {endpoint} returns sensitive fields: {found_sensitive}",
+                                "severity": "high",
+                                "owasp": "API3:2023",
+                                "recommendation": "Filter response data to only include necessary fields",
+                                "mitre": "T1190",
+                            },
+                        )
 
                 # Check for array of objects
                 if isinstance(data, list) and len(data) > 0:
@@ -349,31 +375,37 @@ class APIFuzzer:
                                     found_sensitive.append(key)
 
                             if found_sensitive:
-                                self._add_finding("data_exposure", {
-                                    "type": "data_excessive_exposure_array",
-                                    "endpoint": endpoint,
-                                    "sensitive_fields": found_sensitive,
-                                    "description": f"Endpoint {endpoint} returns arrays with sensitive fields: {found_sensitive}",
-                                    "severity": "high",
-                                    "owasp": "API3:2023",
-                                    "recommendation": "Implement response filtering for array endpoints",
-                                    "mitre": "T1190"
-                                })
+                                self._add_finding(
+                                    "data_exposure",
+                                    {
+                                        "type": "data_excessive_exposure_array",
+                                        "endpoint": endpoint,
+                                        "sensitive_fields": found_sensitive,
+                                        "description": f"Endpoint {endpoint} returns arrays with sensitive fields: {found_sensitive}",
+                                        "severity": "high",
+                                        "owasp": "API3:2023",
+                                        "recommendation": "Implement response filtering for array endpoints",
+                                        "mitre": "T1190",
+                                    },
+                                )
                                 break
 
                 # Check response size (if very large, might be returning too much data)
                 content_length = len(response.content)
                 if content_length > 1024 * 1024:  # > 1MB
-                    self._add_finding("data_exposure", {
-                        "type": "data_large_response",
-                        "endpoint": endpoint,
-                        "response_size_bytes": content_length,
-                        "description": f"Endpoint {endpoint} returns very large response ({content_length} bytes)",
-                        "severity": "medium",
-                        "owasp": "API3:2023",
-                        "recommendation": "Implement pagination and response filtering",
-                        "mitre": "T1190"
-                    })
+                    self._add_finding(
+                        "data_exposure",
+                        {
+                            "type": "data_large_response",
+                            "endpoint": endpoint,
+                            "response_size_bytes": content_length,
+                            "description": f"Endpoint {endpoint} returns very large response ({content_length} bytes)",
+                            "severity": "medium",
+                            "owasp": "API3:2023",
+                            "recommendation": "Implement pagination and response filtering",
+                            "mitre": "T1190",
+                        },
+                    )
 
             except (json.JSONDecodeError, ValueError):
                 pass
@@ -407,23 +439,26 @@ class APIFuzzer:
         if successful_requests == requests_count:
             requests_per_second = successful_requests / elapsed_time
 
-            self._add_finding("rate_limiting", {
-                "type": "rate_no_rate_limit",
-                "endpoint": endpoint,
-                "requests_sent": requests_count,
-                "requests_succeeded": successful_requests,
-                "requests_per_second": round(requests_per_second, 2),
-                "description": f"Endpoint {endpoint} has no rate limiting (accepted {requests_count} requests)",
-                "severity": "high",
-                "owasp": "API4:2023",
-                "recommendation": "Implement rate limiting (e.g., 100 requests per minute per user)",
-                "mitre": "T1498"
-            })
+            self._add_finding(
+                "rate_limiting",
+                {
+                    "type": "rate_no_rate_limit",
+                    "endpoint": endpoint,
+                    "requests_sent": requests_count,
+                    "requests_succeeded": successful_requests,
+                    "requests_per_second": round(requests_per_second, 2),
+                    "description": f"Endpoint {endpoint} has no rate limiting (accepted {requests_count} requests)",
+                    "severity": "high",
+                    "owasp": "API4:2023",
+                    "recommendation": "Implement rate limiting (e.g., 100 requests per minute per user)",
+                    "mitre": "T1498",
+                },
+            )
 
         self.findings["endpoints_tested"].append(endpoint)
         logger.info(f"[+] Rate limiting testing complete for {endpoint}")
 
-    def test_bfla(self, admin_endpoint: str, regular_user_headers: Dict[str, str]) -> None:
+    def test_bfla(self, admin_endpoint: str, regular_user_headers: dict[str, str]) -> None:
         """
         Test for Broken Function Level Authorization (BFLA) - API5:2023.
 
@@ -440,31 +475,39 @@ class APIFuzzer:
 
         if response:
             if response.status_code == 200:
-                self._add_finding("bfla", {
-                    "type": "bfla_admin_access_by_regular_user",
-                    "endpoint": admin_endpoint,
-                    "description": f"Regular user can access admin endpoint {admin_endpoint}",
-                    "severity": "critical",
-                    "owasp": "API5:2023",
-                    "recommendation": "Implement function-level authorization checks for admin endpoints",
-                    "mitre": "T1190"
-                })
+                self._add_finding(
+                    "bfla",
+                    {
+                        "type": "bfla_admin_access_by_regular_user",
+                        "endpoint": admin_endpoint,
+                        "description": f"Regular user can access admin endpoint {admin_endpoint}",
+                        "severity": "critical",
+                        "owasp": "API5:2023",
+                        "recommendation": "Implement function-level authorization checks for admin endpoints",
+                        "mitre": "T1190",
+                    },
+                )
 
             # Try different HTTP methods
             methods = ["POST", "PUT", "DELETE", "PATCH"]
             for method in methods:
-                response_method = self._make_request(method, admin_endpoint, headers=regular_user_headers)
+                response_method = self._make_request(
+                    method, admin_endpoint, headers=regular_user_headers
+                )
                 if response_method and response_method.status_code in [200, 201, 204]:
-                    self._add_finding("bfla", {
-                        "type": "bfla_privileged_method_access",
-                        "endpoint": admin_endpoint,
-                        "method": method,
-                        "description": f"Regular user can use {method} on admin endpoint {admin_endpoint}",
-                        "severity": "critical",
-                        "owasp": "API5:2023",
-                        "recommendation": "Restrict privileged HTTP methods to authorized users",
-                        "mitre": "T1190"
-                    })
+                    self._add_finding(
+                        "bfla",
+                        {
+                            "type": "bfla_privileged_method_access",
+                            "endpoint": admin_endpoint,
+                            "method": method,
+                            "description": f"Regular user can use {method} on admin endpoint {admin_endpoint}",
+                            "severity": "critical",
+                            "owasp": "API5:2023",
+                            "recommendation": "Restrict privileged HTTP methods to authorized users",
+                            "mitre": "T1190",
+                        },
+                    )
 
         self.findings["endpoints_tested"].append(admin_endpoint)
         logger.info(f"[+] BFLA testing complete for {admin_endpoint}")
@@ -488,7 +531,7 @@ class APIFuzzer:
             "http://metadata.google.internal/",  # GCP metadata
             "file:///etc/passwd",
             "http://[::1]:80",
-            "http://0.0.0.0:80"
+            "http://0.0.0.0:80",
         ]
 
         for payload in ssrf_payloads:
@@ -497,34 +540,42 @@ class APIFuzzer:
             if response and response.status_code == 200:
                 # Check if response contains internal data
                 content = response.text.lower()
-                if any(keyword in content for keyword in ["root:", "metadata", "credentials", "secret"]):
-                    self._add_finding("ssrf", {
-                        "type": "ssrf_internal_access",
-                        "endpoint": endpoint,
-                        "payload": payload,
-                        "description": f"SSRF vulnerability at {endpoint} - accessed internal resource: {payload}",
-                        "severity": "critical",
-                        "owasp": "API7:2023",
-                        "recommendation": "Validate and sanitize user-supplied URLs, use allowlist",
-                        "mitre": "T1190"
-                    })
+                if any(
+                    keyword in content for keyword in ["root:", "metadata", "credentials", "secret"]
+                ):
+                    self._add_finding(
+                        "ssrf",
+                        {
+                            "type": "ssrf_internal_access",
+                            "endpoint": endpoint,
+                            "payload": payload,
+                            "description": f"SSRF vulnerability at {endpoint} - accessed internal resource: {payload}",
+                            "severity": "critical",
+                            "owasp": "API7:2023",
+                            "recommendation": "Validate and sanitize user-supplied URLs, use allowlist",
+                            "mitre": "T1190",
+                        },
+                    )
                 else:
                     # Still potentially vulnerable if it accepts internal URLs
-                    self._add_finding("ssrf", {
-                        "type": "ssrf_potential",
-                        "endpoint": endpoint,
-                        "payload": payload,
-                        "description": f"Endpoint {endpoint} accepts internal URLs (potential SSRF): {payload}",
-                        "severity": "high",
-                        "owasp": "API7:2023",
-                        "recommendation": "Implement URL validation and restrict to external resources",
-                        "mitre": "T1190"
-                    })
+                    self._add_finding(
+                        "ssrf",
+                        {
+                            "type": "ssrf_potential",
+                            "endpoint": endpoint,
+                            "payload": payload,
+                            "description": f"Endpoint {endpoint} accepts internal URLs (potential SSRF): {payload}",
+                            "severity": "high",
+                            "owasp": "API7:2023",
+                            "recommendation": "Implement URL validation and restrict to external resources",
+                            "mitre": "T1190",
+                        },
+                    )
 
         self.findings["endpoints_tested"].append(endpoint)
         logger.info(f"[+] SSRF testing complete for {endpoint}")
 
-    def test_security_misconfiguration(self, endpoints: List[str]) -> None:
+    def test_security_misconfiguration(self, endpoints: list[str]) -> None:
         """
         Test for Security Misconfiguration - API8:2023.
 
@@ -545,56 +596,68 @@ class APIFuzzer:
                     "X-Content-Type-Options",
                     "X-Frame-Options",
                     "Strict-Transport-Security",
-                    "Content-Security-Policy"
+                    "Content-Security-Policy",
                 ]
 
                 missing_headers = [h for h in security_headers if h not in response.headers]
                 if missing_headers:
-                    self._add_finding("misconfig", {
-                        "type": "misconfig_missing_security_headers",
-                        "endpoint": endpoint,
-                        "missing_headers": missing_headers,
-                        "description": f"Endpoint {endpoint} missing security headers: {missing_headers}",
-                        "severity": "medium",
-                        "owasp": "API8:2023",
-                        "recommendation": "Implement all recommended security headers",
-                        "mitre": "T1190"
-                    })
+                    self._add_finding(
+                        "misconfig",
+                        {
+                            "type": "misconfig_missing_security_headers",
+                            "endpoint": endpoint,
+                            "missing_headers": missing_headers,
+                            "description": f"Endpoint {endpoint} missing security headers: {missing_headers}",
+                            "severity": "medium",
+                            "owasp": "API8:2023",
+                            "recommendation": "Implement all recommended security headers",
+                            "mitre": "T1190",
+                        },
+                    )
 
                 # Check for verbose error messages
                 if response.status_code >= 500:
-                    if any(keyword in response.text.lower() for keyword in ["stack trace", "exception", "debug", "sql", "database"]):
-                        self._add_finding("misconfig", {
-                            "type": "misconfig_verbose_errors",
-                            "endpoint": endpoint,
-                            "status_code": response.status_code,
-                            "description": f"Endpoint {endpoint} returns verbose error messages",
-                            "severity": "medium",
-                            "owasp": "API8:2023",
-                            "recommendation": "Disable debug mode and implement generic error messages",
-                            "mitre": "T1190"
-                        })
+                    if any(
+                        keyword in response.text.lower()
+                        for keyword in ["stack trace", "exception", "debug", "sql", "database"]
+                    ):
+                        self._add_finding(
+                            "misconfig",
+                            {
+                                "type": "misconfig_verbose_errors",
+                                "endpoint": endpoint,
+                                "status_code": response.status_code,
+                                "description": f"Endpoint {endpoint} returns verbose error messages",
+                                "severity": "medium",
+                                "owasp": "API8:2023",
+                                "recommendation": "Disable debug mode and implement generic error messages",
+                                "mitre": "T1190",
+                            },
+                        )
 
                 # Check for CORS misconfiguration
-                cors_header = response.headers.get('Access-Control-Allow-Origin', '')
-                if cors_header == '*':
-                    self._add_finding("misconfig", {
-                        "type": "misconfig_cors_wildcard",
-                        "endpoint": endpoint,
-                        "description": f"Endpoint {endpoint} allows CORS from all origins (*)",
-                        "severity": "medium",
-                        "owasp": "API8:2023",
-                        "recommendation": "Restrict CORS to specific trusted origins",
-                        "mitre": "T1190"
-                    })
+                cors_header = response.headers.get("Access-Control-Allow-Origin", "")
+                if cors_header == "*":
+                    self._add_finding(
+                        "misconfig",
+                        {
+                            "type": "misconfig_cors_wildcard",
+                            "endpoint": endpoint,
+                            "description": f"Endpoint {endpoint} allows CORS from all origins (*)",
+                            "severity": "medium",
+                            "owasp": "API8:2023",
+                            "recommendation": "Restrict CORS to specific trusted origins",
+                            "mitre": "T1190",
+                        },
+                    )
 
         logger.info("[+] Security misconfiguration testing complete")
 
     def scan_all(
         self,
-        endpoints: Optional[Dict[str, Any]] = None,
-        test_credentials: Optional[List[Tuple[str, str]]] = None
-    ) -> Dict[str, Any]:
+        endpoints: dict[str, Any] | None = None,
+        test_credentials: list[tuple[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Run all OWASP API Security Top 10 tests.
 
@@ -651,10 +714,12 @@ class APIFuzzer:
                 self.test_security_misconfiguration(all_endpoints)
 
         logger.info("[+] API security scan complete!")
-        logger.info(f"[+] Findings: Critical={self.findings['summary']['critical']}, "
-                   f"High={self.findings['summary']['high']}, "
-                   f"Medium={self.findings['summary']['medium']}, "
-                   f"Low={self.findings['summary']['low']}")
+        logger.info(
+            f"[+] Findings: Critical={self.findings['summary']['critical']}, "
+            f"High={self.findings['summary']['high']}, "
+            f"Medium={self.findings['summary']['medium']}, "
+            f"Low={self.findings['summary']['low']}"
+        )
 
         return self.findings
 
@@ -662,7 +727,7 @@ class APIFuzzer:
         """Save scan results to JSON file."""
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(self.findings, f, indent=2)
 
         logger.info(f"[+] Results saved to {output_file}")
@@ -694,27 +759,28 @@ OWASP API Security Top 10 2023:
   API5:2023 - Broken Function Level Authorization
   API7:2023 - Server Side Request Forgery
   API8:2023 - Security Misconfiguration
-        """
+        """,
     )
 
-    parser.add_argument('--url', required=True, help='Base URL of the API')
-    parser.add_argument('--test', choices=['bola', 'auth', 'data', 'rate', 'bfla', 'ssrf', 'misconfig'],
-                       help='Specific test to run')
-    parser.add_argument('--endpoint', help='Endpoint to test')
-    parser.add_argument('--scan-all', action='store_true', help='Run all tests')
-    parser.add_argument('--headers', help='JSON file with custom headers')
-    parser.add_argument('--output', type=Path, default=Path('output/api_scan.json'),
-                       help='Output file path')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser.add_argument("--url", required=True, help="Base URL of the API")
+    parser.add_argument(
+        "--test",
+        choices=["bola", "auth", "data", "rate", "bfla", "ssrf", "misconfig"],
+        help="Specific test to run",
+    )
+    parser.add_argument("--endpoint", help="Endpoint to test")
+    parser.add_argument("--scan-all", action="store_true", help="Run all tests")
+    parser.add_argument("--headers", help="JSON file with custom headers")
+    parser.add_argument(
+        "--output", type=Path, default=Path("output/api_scan.json"), help="Output file path"
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
     # Configure logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(message)s")
 
     print("""
     ╔═══════════════════════════════════════════════════════════╗
@@ -726,25 +792,25 @@ OWASP API Security Top 10 2023:
     # Load custom headers
     headers = {}
     if args.headers:
-        with open(args.headers, 'r') as f:
+        with open(args.headers) as f:
             headers = json.load(f)
 
     try:
         fuzzer = APIFuzzer(base_url=args.url, headers=headers)
 
         if args.test:
-            if args.test == 'bola' and args.endpoint:
+            if args.test == "bola" and args.endpoint:
                 fuzzer.test_bola(args.endpoint)
-            elif args.test == 'auth' and args.endpoint:
+            elif args.test == "auth" and args.endpoint:
                 test_creds = [("admin", "admin"), ("user", "pass"), ("test", "test")]
                 fuzzer.test_broken_authentication(args.endpoint, test_creds)
-            elif args.test == 'data' and args.endpoint:
+            elif args.test == "data" and args.endpoint:
                 fuzzer.test_excessive_data_exposure(args.endpoint)
-            elif args.test == 'rate' and args.endpoint:
+            elif args.test == "rate" and args.endpoint:
                 fuzzer.test_rate_limiting(args.endpoint)
-            elif args.test == 'ssrf' and args.endpoint:
+            elif args.test == "ssrf" and args.endpoint:
                 fuzzer.test_ssrf(args.endpoint)
-            elif args.test == 'misconfig':
+            elif args.test == "misconfig":
                 endpoints = [args.endpoint] if args.endpoint else ["/"]
                 fuzzer.test_security_misconfiguration(endpoints)
             else:
@@ -772,4 +838,5 @@ OWASP API Security Top 10 2023:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

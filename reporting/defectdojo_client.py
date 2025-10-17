@@ -28,16 +28,16 @@ Date: 2025-10-15
 """
 
 import argparse
-import json
-import sys
 import os
-import requests
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from utils.logger import get_logger
+import requests
+
 from utils.config import load_config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -66,14 +66,14 @@ class DefectDojoClient:
         "high": "High",
         "medium": "Medium",
         "low": "Low",
-        "info": "Informational"
+        "info": "Informational",
     }
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None
+        base_url: str | None = None,
+        api_key: str | None = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize DefectDojo client.
@@ -87,16 +87,16 @@ class DefectDojoClient:
 
         # Get DefectDojo URL from config or parameter
         self.base_url = (
-            base_url or
-            self.config.get("defectdojo", {}).get("url") or
-            os.getenv("DEFECTDOJO_URL", "http://10.143.31.115")
+            base_url
+            or self.config.get("defectdojo", {}).get("url")
+            or os.getenv("DEFECTDOJO_URL", "http://10.143.31.115")
         ).rstrip("/")
 
         # Get API key from environment or config
         self.api_key = (
-            api_key or
-            os.getenv("DEFECTDOJO_API_KEY") or
-            self.config.get("defectdojo", {}).get("api_key")
+            api_key
+            or os.getenv("DEFECTDOJO_API_KEY")
+            or self.config.get("defectdojo", {}).get("api_key")
         )
 
         if not self.api_key:
@@ -104,19 +104,13 @@ class DefectDojoClient:
 
         self.api_url = f"{self.base_url}/api/v2"
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Token {self.api_key}",
-            "Content-Type": "application/json"
-        })
+        self.session.headers.update(
+            {"Authorization": f"Token {self.api_key}", "Content-Type": "application/json"}
+        )
 
         logger.info(f"Initialized DefectDojo client for {self.base_url}")
 
-    def _request(
-        self,
-        method: str,
-        endpoint: str,
-        **kwargs
-    ) -> Optional[Dict[str, Any]]:
+    def _request(self, method: str, endpoint: str, **kwargs) -> dict[str, Any] | None:
         """
         Make authenticated API request.
 
@@ -161,11 +155,10 @@ class DefectDojoClient:
         if result:
             logger.info("DefectDojo connection successful")
             return True
-        else:
-            logger.error("DefectDojo connection failed")
-            return False
+        logger.error("DefectDojo connection failed")
+        return False
 
-    def list_products(self) -> List[Dict[str, Any]]:
+    def list_products(self) -> list[dict[str, Any]]:
         """
         List all products.
 
@@ -178,7 +171,7 @@ class DefectDojoClient:
             return result["results"]
         return []
 
-    def get_product(self, product_id: int) -> Optional[Dict[str, Any]]:
+    def get_product(self, product_id: int) -> dict[str, Any] | None:
         """
         Get product details.
 
@@ -191,11 +184,8 @@ class DefectDojoClient:
         return self._request("GET", f"products/{product_id}/")
 
     def create_product(
-        self,
-        name: str,
-        description: str = "",
-        product_type: int = 1
-    ) -> Optional[Dict[str, Any]]:
+        self, name: str, description: str = "", product_type: int = 1
+    ) -> dict[str, Any] | None:
         """
         Create new product.
 
@@ -207,15 +197,11 @@ class DefectDojoClient:
         Returns:
             Created product data or None
         """
-        data = {
-            "name": name,
-            "description": description,
-            "prod_type": product_type
-        }
+        data = {"name": name, "description": description, "prod_type": product_type}
 
         return self._request("POST", "products/", json=data)
 
-    def list_engagements(self, product_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def list_engagements(self, product_id: int | None = None) -> list[dict[str, Any]]:
         """
         List engagements.
 
@@ -240,11 +226,11 @@ class DefectDojoClient:
         product_id: int,
         name: str,
         description: str = "",
-        target_start: Optional[str] = None,
-        target_end: Optional[str] = None,
+        target_start: str | None = None,
+        target_end: str | None = None,
         engagement_type: str = "Interactive",
-        status: str = "In Progress"
-    ) -> Optional[Dict[str, Any]]:
+        status: str = "In Progress",
+    ) -> dict[str, Any] | None:
         """
         Create new engagement.
 
@@ -273,7 +259,7 @@ class DefectDojoClient:
             "target_start": target_start,
             "target_end": target_end,
             "engagement_type": engagement_type,
-            "status": status
+            "status": status,
         }
 
         return self._request("POST", "engagements/", json=data)
@@ -283,11 +269,11 @@ class DefectDojoClient:
         engagement_id: int,
         scan_file: Path,
         scan_type: str = "Generic Findings Import",
-        scan_date: Optional[str] = None,
+        scan_date: str | None = None,
         minimum_severity: str = "Info",
         active: bool = True,
-        verified: bool = False
-    ) -> Optional[Dict[str, Any]]:
+        verified: bool = False,
+    ) -> dict[str, Any] | None:
         """
         Upload scan results to engagement.
 
@@ -315,9 +301,7 @@ class DefectDojoClient:
             return None
 
         # Prepare multipart data
-        files = {
-            "file": (scan_file.name, file_content, "application/json")
-        }
+        files = {"file": (scan_file.name, file_content, "application/json")}
 
         data = {
             "engagement": engagement_id,
@@ -325,7 +309,7 @@ class DefectDojoClient:
             "scan_date": scan_date,
             "minimum_severity": minimum_severity,
             "active": str(active).lower(),
-            "verified": str(verified).lower()
+            "verified": str(verified).lower(),
         }
 
         # Remove Content-Type header for multipart request
@@ -335,12 +319,7 @@ class DefectDojoClient:
         url = f"{self.api_url}/import-scan/"
 
         try:
-            response = requests.post(
-                url,
-                headers=headers,
-                files=files,
-                data=data
-            )
+            response = requests.post(url, headers=headers, files=files, data=data)
             response.raise_for_status()
 
             logger.info(f"Uploaded scan {scan_file.name} to engagement {engagement_id}")
@@ -355,10 +334,7 @@ class DefectDojoClient:
             return None
 
     def import_findings(
-        self,
-        engagement_id: int,
-        findings: List[Dict[str, Any]],
-        scan_date: Optional[str] = None
+        self, engagement_id: int, findings: list[dict[str, Any]], scan_date: str | None = None
     ) -> bool:
         """
         Import findings directly via API.
@@ -378,11 +354,7 @@ class DefectDojoClient:
 
         for finding in findings:
             # Map finding to DefectDojo format
-            dd_finding = self._map_finding_to_defectdojo(
-                finding,
-                engagement_id,
-                scan_date
-            )
+            dd_finding = self._map_finding_to_defectdojo(finding, engagement_id, scan_date)
 
             if dd_finding:
                 result = self._request("POST", "findings/", json=dd_finding)
@@ -393,11 +365,8 @@ class DefectDojoClient:
         return success_count > 0
 
     def _map_finding_to_defectdojo(
-        self,
-        finding: Dict[str, Any],
-        engagement_id: int,
-        scan_date: str
-    ) -> Optional[Dict[str, Any]]:
+        self, finding: dict[str, Any], engagement_id: int, scan_date: str
+    ) -> dict[str, Any] | None:
         """
         Map toolkit finding to DefectDojo finding format.
 
@@ -411,10 +380,7 @@ class DefectDojoClient:
         """
         # Extract finding details
         vuln_type = finding.get("type", "Unknown")
-        severity = self.SEVERITY_MAPPING.get(
-            finding.get("confidence", "low").lower(),
-            "Low"
-        )
+        severity = self.SEVERITY_MAPPING.get(finding.get("confidence", "low").lower(), "Low")
 
         title = f"{vuln_type} - {finding.get('parameter', 'Unknown')}"
         description = finding.get("evidence", "No description available")
@@ -450,11 +416,7 @@ class DefectDojoClient:
 
         return "Generic Findings Import"
 
-    def bulk_upload(
-        self,
-        engagement_id: int,
-        scan_dir: Path
-    ) -> Dict[str, int]:
+    def bulk_upload(self, engagement_id: int, scan_dir: Path) -> dict[str, int]:
         """
         Upload all scans from directory.
 
@@ -480,11 +442,7 @@ class DefectDojoClient:
 
             scan_type = self._detect_scan_type_from_file(scan_file.name)
 
-            result = self.upload_scan(
-                engagement_id,
-                scan_file,
-                scan_type=scan_type
-            )
+            result = self.upload_scan(engagement_id, scan_file, scan_type=scan_type)
 
             if result:
                 stats["success"] += 1
@@ -498,80 +456,37 @@ def main() -> int:
     """Main entry point for command-line usage."""
     parser = argparse.ArgumentParser(
         description="DefectDojo API Client - Vulnerability Management Integration",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # Connection
-    parser.add_argument(
-        "--url",
-        help="DefectDojo URL (default: from config or env DEFECTDOJO_URL)"
-    )
+    parser.add_argument("--url", help="DefectDojo URL (default: from config or env DEFECTDOJO_URL)")
 
-    parser.add_argument(
-        "--api-key",
-        help="API key (default: from env DEFECTDOJO_API_KEY)"
-    )
+    parser.add_argument("--api-key", help="API key (default: from env DEFECTDOJO_API_KEY)")
 
-    parser.add_argument(
-        "--test-connection",
-        action="store_true",
-        help="Test connection and exit"
-    )
+    parser.add_argument("--test-connection", action="store_true", help="Test connection and exit")
 
     # Listing
-    parser.add_argument(
-        "--list-products",
-        action="store_true",
-        help="List all products"
-    )
+    parser.add_argument("--list-products", action="store_true", help="List all products")
 
-    parser.add_argument(
-        "--list-engagements",
-        action="store_true",
-        help="List engagements"
-    )
+    parser.add_argument("--list-engagements", action="store_true", help="List engagements")
 
-    parser.add_argument(
-        "--product-id",
-        type=int,
-        help="Product ID"
-    )
+    parser.add_argument("--product-id", type=int, help="Product ID")
 
     # Engagement creation
-    parser.add_argument(
-        "--create-engagement",
-        action="store_true",
-        help="Create new engagement"
-    )
+    parser.add_argument("--create-engagement", action="store_true", help="Create new engagement")
 
-    parser.add_argument(
-        "--engagement-name",
-        help="Engagement name"
-    )
+    parser.add_argument("--engagement-name", help="Engagement name")
 
-    parser.add_argument(
-        "--engagement-id",
-        type=int,
-        help="Existing engagement ID for uploads"
-    )
+    parser.add_argument("--engagement-id", type=int, help="Existing engagement ID for uploads")
 
     # Scan uploads
-    parser.add_argument(
-        "--scan-file",
-        type=Path,
-        help="Single scan file to upload"
-    )
+    parser.add_argument("--scan-file", type=Path, help="Single scan file to upload")
+
+    parser.add_argument("--scan-dir", type=Path, help="Directory containing scan files to upload")
 
     parser.add_argument(
-        "--scan-dir",
-        type=Path,
-        help="Directory containing scan files to upload"
-    )
-
-    parser.add_argument(
-        "--scan-type",
-        default="Generic Findings Import",
-        help="DefectDojo scan type"
+        "--scan-type", default="Generic Findings Import", help="DefectDojo scan type"
     )
 
     args = parser.parse_args()
@@ -594,9 +509,8 @@ def main() -> int:
         if client.test_connection():
             print("[+] Connection successful")
             return 0
-        else:
-            print("[-] Connection failed")
-            return 1
+        print("[-] Connection failed")
+        return 1
 
     # List products
     if args.list_products:
@@ -633,7 +547,7 @@ def main() -> int:
         engagement = client.create_engagement(
             product_id=args.product_id,
             name=args.engagement_name,
-            description=f"Created by Offensive Security Toolkit on {datetime.now().strftime('%Y-%m-%d')}"
+            description=f"Created by Offensive Security Toolkit on {datetime.now().strftime('%Y-%m-%d')}",
         )
 
         if engagement:
@@ -650,29 +564,23 @@ def main() -> int:
             return 1
 
         result = client.upload_scan(
-            engagement_id=args.engagement_id,
-            scan_file=args.scan_file,
-            scan_type=args.scan_type
+            engagement_id=args.engagement_id, scan_file=args.scan_file, scan_type=args.scan_type
         )
 
         if result:
             print(f"[+] Uploaded {args.scan_file.name}")
             return 0
-        else:
-            print(f"[-] Upload failed")
-            return 1
+        print("[-] Upload failed")
+        return 1
 
-    elif args.scan_dir:
+    if args.scan_dir:
         if not args.engagement_id:
             print("[-] Error: --engagement-id required for uploads")
             return 1
 
-        stats = client.bulk_upload(
-            engagement_id=args.engagement_id,
-            scan_dir=args.scan_dir
-        )
+        stats = client.bulk_upload(engagement_id=args.engagement_id, scan_dir=args.scan_dir)
 
-        print(f"\n[+] Upload Summary:")
+        print("\n[+] Upload Summary:")
         print(f"    Total: {stats['total']}")
         print(f"    Success: {stats['success']}")
         print(f"    Failed: {stats['failed']}")

@@ -26,31 +26,74 @@ MITRE ATT&CK: T1590.001 (Gather Victim Network Information: Domain Properties)
 
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
+
 import dns.resolver
 import requests
-from typing import List, Set, Dict, Any, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from utils.logger import get_logger
 from utils.config import load_config
-from utils.helpers import (
-    validate_domain,
-    check_authorization,
-    RateLimiter,
-    sanitize_filename
-)
+from utils.helpers import RateLimiter, check_authorization, sanitize_filename, validate_domain
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 # Common subdomain wordlist
 COMMON_SUBDOMAINS = [
-    "www", "mail", "remote", "blog", "webmail", "server", "ns1", "ns2",
-    "smtp", "secure", "vpn", "m", "shop", "ftp", "mail2", "test", "portal",
-    "ns", "ww1", "host", "support", "dev", "web", "bbs", "ww42", "mx",
-    "email", "cloud", "1", "mail1", "2", "forum", "owa", "www2", "gw",
-    "admin", "store", "mx1", "cdn", "api", "exchange", "app", "gov", "2tty",
-    "vps", "govyty", "news", "1rer", "lms", "stage", "demo", "qa", "prod"
+    "www",
+    "mail",
+    "remote",
+    "blog",
+    "webmail",
+    "server",
+    "ns1",
+    "ns2",
+    "smtp",
+    "secure",
+    "vpn",
+    "m",
+    "shop",
+    "ftp",
+    "mail2",
+    "test",
+    "portal",
+    "ns",
+    "ww1",
+    "host",
+    "support",
+    "dev",
+    "web",
+    "bbs",
+    "ww42",
+    "mx",
+    "email",
+    "cloud",
+    "1",
+    "mail1",
+    "2",
+    "forum",
+    "owa",
+    "www2",
+    "gw",
+    "admin",
+    "store",
+    "mx1",
+    "cdn",
+    "api",
+    "exchange",
+    "app",
+    "gov",
+    "2tty",
+    "vps",
+    "govyty",
+    "news",
+    "1rer",
+    "lms",
+    "stage",
+    "demo",
+    "qa",
+    "prod",
 ]
 
 
@@ -59,7 +102,7 @@ class SubdomainEnumerator:
     Subdomain enumeration tool using multiple discovery methods.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize subdomain enumerator.
 
@@ -70,14 +113,10 @@ class SubdomainEnumerator:
         self.rate_limiter = RateLimiter(
             self.config.get("rate_limit", {}).get("requests_per_second", 10)
         )
-        self.found_subdomains: Set[str] = set()
+        self.found_subdomains: set[str] = set()
         logger.info(f"Initialized {self.__class__.__name__}")
 
-    def dns_bruteforce(
-        self,
-        domain: str,
-        wordlist: Optional[List[str]] = None
-    ) -> Set[str]:
+    def dns_bruteforce(self, domain: str, wordlist: list[str] | None = None) -> set[str]:
         """
         Brute-force subdomains using DNS queries.
 
@@ -94,7 +133,7 @@ class SubdomainEnumerator:
         found = set()
         logger.info(f"Starting DNS brute-force with {len(wordlist)} subdomains")
 
-        def check_subdomain(subdomain_name: str) -> Optional[str]:
+        def check_subdomain(subdomain_name: str) -> str | None:
             """Check if subdomain exists."""
             self.rate_limiter.wait()
             full_domain = f"{subdomain_name}.{domain}"
@@ -129,7 +168,7 @@ class SubdomainEnumerator:
         logger.info(f"DNS brute-force found {len(found)} subdomains")
         return found
 
-    def cert_transparency_search(self, domain: str) -> Set[str]:
+    def cert_transparency_search(self, domain: str) -> set[str]:
         """
         Search certificate transparency logs for subdomains.
 
@@ -169,7 +208,7 @@ class SubdomainEnumerator:
 
         return found
 
-    def dns_dumpster_search(self, domain: str) -> Set[str]:
+    def dns_dumpster_search(self, domain: str) -> set[str]:
         """
         Search DNSDumpster for subdomains (passive).
 
@@ -187,10 +226,10 @@ class SubdomainEnumerator:
     def run(
         self,
         domain: str,
-        wordlist_file: Optional[str] = None,
+        wordlist_file: str | None = None,
         use_cert_transparency: bool = True,
-        use_dns_bruteforce: bool = True
-    ) -> Dict[str, Any]:
+        use_dns_bruteforce: bool = True,
+    ) -> dict[str, Any]:
         """
         Execute subdomain enumeration.
 
@@ -226,12 +265,12 @@ class SubdomainEnumerator:
 
         # DNS Brute-force
         if use_dns_bruteforce:
-            print(f"\n[*] Starting DNS brute-force...")
+            print("\n[*] Starting DNS brute-force...")
             wordlist = None
 
             if wordlist_file:
                 try:
-                    with open(wordlist_file, "r") as f:
+                    with open(wordlist_file) as f:
                         wordlist = [line.strip() for line in f if line.strip()]
                     logger.info(f"Loaded {len(wordlist)} subdomains from wordlist")
                 except Exception as e:
@@ -244,7 +283,7 @@ class SubdomainEnumerator:
         results = {
             "domain": domain,
             "subdomains": sorted(list(self.found_subdomains)),
-            "total_found": len(self.found_subdomains)
+            "total_found": len(self.found_subdomains),
         }
 
         logger.info(f"Enumeration complete: {results['total_found']} subdomains found")
@@ -252,7 +291,7 @@ class SubdomainEnumerator:
 
         return results
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save enumeration results to output directory.
 
@@ -260,8 +299,8 @@ class SubdomainEnumerator:
             results: Results dictionary to save
         """
         import json
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         output_dir = Path(self.config.get("output", {}).get("directory", "output"))
         output_dir.mkdir(exist_ok=True)
@@ -288,44 +327,26 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="Subdomain Enumerator - Multi-Source Subdomain Discovery\n"
-                    "[!] For authorized reconnaissance only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized reconnaissance only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--domain",
-        required=True,
-        help="Target domain"
-    )
+    parser.add_argument("--domain", required=True, help="Target domain")
 
-    parser.add_argument(
-        "--wordlist",
-        help="Path to subdomain wordlist file"
-    )
+    parser.add_argument("--wordlist", help="Path to subdomain wordlist file")
 
     parser.add_argument(
         "--cert-transparency",
         action="store_true",
         default=True,
-        help="Search certificate transparency logs (default: enabled)"
+        help="Search certificate transparency logs (default: enabled)",
     )
 
-    parser.add_argument(
-        "--no-bruteforce",
-        action="store_true",
-        help="Disable DNS brute-force"
-    )
+    parser.add_argument("--no-bruteforce", action="store_true", help="Disable DNS brute-force")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -335,6 +356,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -346,10 +368,7 @@ def main() -> int:
 
     # Run enumeration
     results = enumerator.run(
-        args.domain,
-        args.wordlist,
-        args.cert_transparency,
-        not args.no_bruteforce
+        args.domain, args.wordlist, args.cert_transparency, not args.no_bruteforce
     )
 
     if "error" in results:
@@ -357,12 +376,12 @@ def main() -> int:
         return 1
 
     # Print summary
-    print(f"\n[+] Enumeration Summary:")
+    print("\n[+] Enumeration Summary:")
     print(f"    Domain: {results['domain']}")
     print(f"    Subdomains Found: {results['total_found']}")
 
     if results["subdomains"]:
-        print(f"\n[+] Discovered Subdomains:")
+        print("\n[+] Discovered Subdomains:")
         for subdomain in results["subdomains"]:
             print(f"    - {subdomain}")
 

@@ -27,17 +27,12 @@ MITRE ATT&CK: T1046 (Network Service Discovery)
 import argparse
 import socket
 import sys
-from typing import List, Dict, Any, Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
-from utils.logger import get_logger
 from utils.config import load_config
-from utils.helpers import (
-    validate_target,
-    check_authorization,
-    RateLimiter,
-    sanitize_filename
-)
+from utils.helpers import RateLimiter, check_authorization, sanitize_filename, validate_target
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -73,7 +68,7 @@ class PortScanner:
         rate_limiter (RateLimiter): Rate limiting instance
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize the port scanner.
 
@@ -86,7 +81,7 @@ class PortScanner:
         )
         logger.info(f"Initialized {self.__class__.__name__}")
 
-    def scan_port(self, host: str, port: int, timeout: float = 1.0) -> Tuple[int, bool, str]:
+    def scan_port(self, host: str, port: int, timeout: float = 1.0) -> tuple[int, bool, str]:
         """
         Scan a single port on a host.
 
@@ -106,7 +101,7 @@ class PortScanner:
             result = sock.connect_ex((host, port))
             sock.close()
 
-            is_open = (result == 0)
+            is_open = result == 0
             service = COMMON_PORTS.get(port, "Unknown")
 
             if is_open:
@@ -117,16 +112,13 @@ class PortScanner:
         except socket.gaierror:
             logger.error(f"Hostname {host} could not be resolved")
             return (port, False, "Error")
-        except socket.error as e:
+        except OSError as e:
             logger.debug(f"Connection error on port {port}: {e}")
             return (port, False, "Error")
 
     def scan_ports(
-        self,
-        host: str,
-        ports: List[int],
-        max_threads: int = 100
-    ) -> Dict[int, Dict[str, Any]]:
+        self, host: str, ports: list[int], max_threads: int = 100
+    ) -> dict[int, dict[str, Any]]:
         """
         Scan multiple ports on a host using threading.
 
@@ -142,19 +134,13 @@ class PortScanner:
         logger.info(f"Scanning {len(ports)} ports on {host}")
 
         with ThreadPoolExecutor(max_workers=max_threads) as executor:
-            future_to_port = {
-                executor.submit(self.scan_port, host, port): port
-                for port in ports
-            }
+            future_to_port = {executor.submit(self.scan_port, host, port): port for port in ports}
 
             completed = 0
             for future in as_completed(future_to_port):
                 port, is_open, service = future.result()
                 if is_open:
-                    results[port] = {
-                        "status": "open",
-                        "service": service
-                    }
+                    results[port] = {"status": "open", "service": service}
                     print(f"[+] {host}:{port} - {service} - OPEN")
 
                 completed += 1
@@ -163,7 +149,7 @@ class PortScanner:
 
         return results
 
-    def run(self, target: str, port_range: str = "common") -> Dict[str, Any]:
+    def run(self, target: str, port_range: str = "common") -> dict[str, Any]:
         """
         Execute the port scan against a target.
 
@@ -201,7 +187,7 @@ class PortScanner:
                 "target": target,
                 "total_ports_scanned": len(ports),
                 "open_ports": len(results),
-                "results": results
+                "results": results,
             }
 
             logger.info(f"Scan complete: {len(results)} open ports found")
@@ -210,10 +196,10 @@ class PortScanner:
             return summary
 
         except Exception as e:
-            logger.error(f"Error during scan: {str(e)}", exc_info=True)
+            logger.error(f"Error during scan: {e!s}", exc_info=True)
             return {"error": str(e)}
 
-    def _parse_port_range(self, port_range: str) -> List[int]:
+    def _parse_port_range(self, port_range: str) -> list[int]:
         """
         Parse port range specification into list of ports.
 
@@ -250,7 +236,7 @@ class PortScanner:
             logger.error(f"Invalid port: {port_range}")
             return []
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save scan results to output directory.
 
@@ -258,8 +244,8 @@ class PortScanner:
             results: Results dictionary to save
         """
         import json
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         output_dir = Path(self.config.get("output", {}).get("directory", "output"))
         output_dir.mkdir(exist_ok=True)
@@ -286,39 +272,23 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="Port Scanner - Network Service Discovery\n"
-                    "[!] For authorized security testing only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized security testing only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("--target", required=True, help="Target IP address or hostname")
+
+    parser.add_argument(
+        "--ports", default="common", help="Port range (common, 1-65535, 80,443,8080)"
     )
 
     parser.add_argument(
-        "--target",
-        required=True,
-        help="Target IP address or hostname"
+        "--rate-limit", type=float, default=10.0, help="Maximum requests per second (default: 10)"
     )
 
-    parser.add_argument(
-        "--ports",
-        default="common",
-        help="Port range (common, 1-65535, 80,443,8080)"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--rate-limit",
-        type=float,
-        default=10.0,
-        help="Maximum requests per second (default: 10)"
-    )
-
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -332,6 +302,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     # Print warning
@@ -350,14 +321,14 @@ def main() -> int:
         return 1
 
     # Print summary
-    print(f"\n[+] Scan Summary:")
+    print("\n[+] Scan Summary:")
     print(f"    Target: {results['target']}")
     print(f"    Ports Scanned: {results['total_ports_scanned']}")
     print(f"    Open Ports: {results['open_ports']}")
 
-    if results['open_ports'] > 0:
-        print(f"\n[+] Open Ports:")
-        for port, info in sorted(results['results'].items()):
+    if results["open_ports"] > 0:
+        print("\n[+] Open Ports:")
+        for port, info in sorted(results["results"].items()):
             print(f"    {port:5d} - {info['service']}")
 
     return 0

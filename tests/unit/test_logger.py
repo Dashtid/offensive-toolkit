@@ -2,15 +2,14 @@
 Unit tests for utils/logger.py module.
 """
 
-import pytest
 import logging
-from pathlib import Path
+
 from utils.logger import (
-    setup_logger,
+    SanitizingLogger,
     get_logger,
-    set_log_level,
     sanitize_log_message,
-    SanitizingLogger
+    set_log_level,
+    setup_logger,
 )
 
 
@@ -33,31 +32,19 @@ class TestSetupLogger:
 
     def test_logger_custom_level(self):
         """Test logger with custom log level."""
-        logger = setup_logger(
-            "test_custom_level",
-            log_level=logging.DEBUG,
-            file_output=False
-        )
+        logger = setup_logger("test_custom_level", log_level=logging.DEBUG, file_output=False)
         assert logger.level == logging.DEBUG
 
     def test_console_handler_creation(self):
         """Test console handler is created when requested."""
         logger = setup_logger("test_console", console=True, file_output=False)
-        console_handlers = [
-            h for h in logger.handlers
-            if isinstance(h, logging.StreamHandler)
-        ]
+        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
         assert len(console_handlers) >= 1
 
     def test_file_handler_creation(self, temp_dir):
         """Test file handler is created when requested."""
         log_file = temp_dir / "test_file.log"
-        logger = setup_logger(
-            "test_file",
-            log_file=str(log_file),
-            console=False,
-            file_output=True
-        )
+        logger = setup_logger("test_file", log_file=str(log_file), console=False, file_output=True)
 
         # Write a log message
         logger.info("Test message")
@@ -240,11 +227,7 @@ class TestLoggerIntegration:
     def test_log_to_file(self, temp_dir):
         """Test logging messages to file."""
         log_file = temp_dir / "integration.log"
-        logger = setup_logger(
-            "integration_test",
-            log_file=str(log_file),
-            console=False
-        )
+        logger = setup_logger("integration_test", log_file=str(log_file), console=False)
 
         logger.info("Test info message")
         logger.warning("Test warning message")
@@ -260,11 +243,7 @@ class TestLoggerIntegration:
     def test_log_rotation(self, temp_dir):
         """Test log file rotation."""
         log_file = temp_dir / "rotation.log"
-        logger = setup_logger(
-            "rotation_test",
-            log_file=str(log_file),
-            console=False
-        )
+        logger = setup_logger("rotation_test", log_file=str(log_file), console=False)
 
         # Write many messages to trigger rotation
         for i in range(1000):

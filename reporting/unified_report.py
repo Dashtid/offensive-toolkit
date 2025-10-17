@@ -29,14 +29,13 @@ Date: 2025-10-15
 
 import argparse
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
-from utils.logger import get_logger
-from utils.config import load_config
-from reporting.report_generator import ReportGenerator
 from reporting.defectdojo_client import DefectDojoClient
+from reporting.report_generator import ReportGenerator
+from utils.config import load_config
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -50,80 +49,45 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="Unified Reporting - Generate reports and upload to DefectDojo",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # Input
     parser.add_argument(
-        "--scan-dir",
-        type=Path,
-        required=True,
-        help="Directory containing scan result files"
+        "--scan-dir", type=Path, required=True, help="Directory containing scan result files"
     )
 
     # Report generation
     parser.add_argument(
         "--format",
         default="html",
-        help="Output formats: html, json, or html,json (comma-separated)"
+        help="Output formats: html, json, or html,json (comma-separated)",
     )
 
     parser.add_argument(
-        "--output",
-        default="security_report",
-        help="Output filename (without extension)"
+        "--output", default="security_report", help="Output filename (without extension)"
     )
 
     # DefectDojo integration
-    parser.add_argument(
-        "--defectdojo",
-        action="store_true",
-        help="Upload results to DefectDojo"
-    )
+    parser.add_argument("--defectdojo", action="store_true", help="Upload results to DefectDojo")
+
+    parser.add_argument("--dd-url", help="DefectDojo URL (default: from config)")
 
     parser.add_argument(
-        "--dd-url",
-        help="DefectDojo URL (default: from config)"
+        "--dd-api-key", help="DefectDojo API key (default: from env DEFECTDOJO_API_KEY)"
     )
 
-    parser.add_argument(
-        "--dd-api-key",
-        help="DefectDojo API key (default: from env DEFECTDOJO_API_KEY)"
-    )
+    parser.add_argument("--product-id", type=int, help="DefectDojo product ID")
 
-    parser.add_argument(
-        "--product-id",
-        type=int,
-        help="DefectDojo product ID"
-    )
+    parser.add_argument("--engagement-id", type=int, help="Existing DefectDojo engagement ID")
 
-    parser.add_argument(
-        "--engagement-id",
-        type=int,
-        help="Existing DefectDojo engagement ID"
-    )
+    parser.add_argument("--create-engagement", action="store_true", help="Create new engagement")
 
-    parser.add_argument(
-        "--create-engagement",
-        action="store_true",
-        help="Create new engagement"
-    )
+    parser.add_argument("--engagement-name", help="Name for new engagement")
 
-    parser.add_argument(
-        "--engagement-name",
-        help="Name for new engagement"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -133,6 +97,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -155,7 +120,7 @@ def main() -> int:
     # ===================
     # PHASE 1: Generate Reports
     # ===================
-    print(f"\n[*] Phase 1: Generating Reports")
+    print("\n[*] Phase 1: Generating Reports")
     print("=" * 70)
 
     generator = ReportGenerator(config)
@@ -170,21 +135,21 @@ def main() -> int:
         output_path = Path(f"{args.output}.{fmt}")
 
         if fmt == "html":
-            print(f"[*] Generating HTML report...")
+            print("[*] Generating HTML report...")
             if generator.generate_html_report(output_path):
                 print(f"[+] HTML report: {output_path}")
                 report_paths.append(output_path)
             else:
-                print(f"[-] Failed to generate HTML report")
+                print("[-] Failed to generate HTML report")
                 return 1
 
         elif fmt == "json":
-            print(f"[*] Generating JSON report...")
+            print("[*] Generating JSON report...")
             if generator.generate_json_report(output_path):
                 print(f"[+] JSON report: {output_path}")
                 report_paths.append(output_path)
             else:
-                print(f"[-] Failed to generate JSON report")
+                print("[-] Failed to generate JSON report")
                 return 1
 
         else:
@@ -192,13 +157,13 @@ def main() -> int:
             return 1
 
     # Print report summary
-    print(f"\n[+] Report Summary:")
+    print("\n[+] Report Summary:")
     print(f"    Total Scans: {generator.statistics['total_scans']}")
     print(f"    Vulnerabilities: {generator.statistics['total_vulnerabilities']}")
     print(f"    Targets: {len(generator.statistics['targets'])}")
 
     if generator.statistics["by_severity"]:
-        print(f"\n[+] Vulnerabilities by Severity:")
+        print("\n[+] Vulnerabilities by Severity:")
         for severity in ["critical", "high", "medium", "low"]:
             count = generator.statistics["by_severity"].get(severity, 0)
             if count > 0:
@@ -208,15 +173,11 @@ def main() -> int:
     # PHASE 2: Upload to DefectDojo (Optional)
     # ===================
     if args.defectdojo:
-        print(f"\n[*] Phase 2: Uploading to DefectDojo")
+        print("\n[*] Phase 2: Uploading to DefectDojo")
         print("=" * 70)
 
         # Initialize DefectDojo client
-        dd_client = DefectDojoClient(
-            base_url=args.dd_url,
-            api_key=args.dd_api_key,
-            config=config
-        )
+        dd_client = DefectDojoClient(base_url=args.dd_url, api_key=args.dd_api_key, config=config)
 
         if not dd_client.api_key:
             print("[-] Error: No DefectDojo API key configured")
@@ -246,8 +207,8 @@ def main() -> int:
                 product_id=args.product_id,
                 name=args.engagement_name,
                 description=f"Automated upload from Offensive Security Toolkit\n"
-                           f"Scans: {generator.statistics['total_scans']}\n"
-                           f"Vulnerabilities: {generator.statistics['total_vulnerabilities']}"
+                f"Scans: {generator.statistics['total_scans']}\n"
+                f"Vulnerabilities: {generator.statistics['total_vulnerabilities']}",
             )
 
             if engagement:
@@ -260,18 +221,17 @@ def main() -> int:
         # Validate engagement ID
         if not args.engagement_id:
             print("[-] Error: --engagement-id required for uploads")
-            print("[!] Use --create-engagement to create new engagement or specify existing --engagement-id")
+            print(
+                "[!] Use --create-engagement to create new engagement or specify existing --engagement-id"
+            )
             return 1
 
         # Upload scans
         print(f"[*] Uploading {len(scan_files)} scans to engagement {args.engagement_id}...")
 
-        stats = dd_client.bulk_upload(
-            engagement_id=args.engagement_id,
-            scan_dir=args.scan_dir
-        )
+        stats = dd_client.bulk_upload(engagement_id=args.engagement_id, scan_dir=args.scan_dir)
 
-        print(f"\n[+] DefectDojo Upload Summary:")
+        print("\n[+] DefectDojo Upload Summary:")
         print(f"    Total Files: {stats['total']}")
         print(f"    Successful: {stats['success']}")
         print(f"    Failed: {stats['failed']}")
@@ -286,12 +246,12 @@ def main() -> int:
     print("[+] Unified Reporting Complete")
     print("=" * 70)
 
-    print(f"\n[+] Generated Reports:")
+    print("\n[+] Generated Reports:")
     for report_path in report_paths:
         print(f"    {report_path}")
 
     if args.defectdojo and args.engagement_id:
-        print(f"\n[+] DefectDojo:")
+        print("\n[+] DefectDojo:")
         print(f"    Engagement ID: {args.engagement_id}")
         print(f"    URL: {dd_client.base_url}/engagement/{args.engagement_id}")
 

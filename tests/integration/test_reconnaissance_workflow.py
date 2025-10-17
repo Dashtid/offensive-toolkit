@@ -4,12 +4,13 @@ Integration tests for reconnaissance workflow.
 Tests the complete reconnaissance workflow combining multiple tools.
 """
 
-import pytest
 from unittest.mock import Mock, patch
-import dns.resolver
 
-from reconnaissance.port_scanner import PortScanner
+import dns.resolver
+import pytest
+
 from reconnaissance.dns_resolver import DNSResolver
+from reconnaissance.port_scanner import PortScanner
 from reconnaissance.subdomain_enum import SubdomainEnumerator
 from reconnaissance.whois_lookup import WHOISLookup
 
@@ -82,14 +83,12 @@ class TestReconnaissanceWorkflow:
                 mock_response.status_code = 200
                 mock_response.json.return_value = [
                     {"name_value": "api.example.com"},
-                    {"name_value": "blog.example.com"}
+                    {"name_value": "blog.example.com"},
                 ]
                 mock_get.return_value = mock_response
 
                 subdomain_results = subdomain_enum.run(
-                    authorized_domain,
-                    use_cert_transparency=True,
-                    use_dns_bruteforce=True
+                    authorized_domain, use_cert_transparency=True, use_dns_bruteforce=True
                 )
 
                 # Verify subdomain enumeration
@@ -110,11 +109,7 @@ class TestReconnaissanceWorkflow:
                     assert isinstance(dns_results, dict)
 
     def test_full_reconnaissance_workflow(
-        self,
-        test_config,
-        authorized_domain,
-        mock_socket,
-        tmp_path
+        self, test_config, authorized_domain, mock_socket, tmp_path
     ):
         """Test complete reconnaissance workflow: DNS -> Subdomains -> WHOIS -> Port Scan."""
         test_config["output"]["directory"] = str(tmp_path)
@@ -131,7 +126,7 @@ class TestReconnaissanceWorkflow:
             def mock_resolve(domain, record_type):
                 if record_type == "A":
                     return mock_answers_a
-                elif record_type == "MX":
+                if record_type == "MX":
                     return mock_answers_mx
                 raise dns.resolver.NoAnswer()
 
@@ -161,7 +156,7 @@ class TestReconnaissanceWorkflow:
                 subdomain_results = subdomain_enum.run(
                     authorized_domain,
                     use_cert_transparency=True,
-                    use_dns_bruteforce=False  # Skip brute-force for speed
+                    use_dns_bruteforce=False,  # Skip brute-force for speed
                 )
 
                 assert subdomain_results["total_found"] > 0
@@ -176,7 +171,7 @@ class TestReconnaissanceWorkflow:
                         b"Domain Name: EXAMPLE.COM\r\n",
                         b"Registrar: Example Registrar Inc.\r\n",
                         b"Creation Date: 2020-01-01T00:00:00Z\r\n",
-                        b""
+                        b"",
                     ]
                     mock_socket_class.return_value = mock_sock
 

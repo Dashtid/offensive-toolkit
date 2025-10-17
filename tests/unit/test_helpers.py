@@ -2,21 +2,20 @@
 Unit tests for utils/helpers.py module.
 """
 
-import pytest
 import time
-from pathlib import Path
+
 from utils.helpers import (
-    validate_target,
-    validate_ip,
+    RateLimiter,
+    check_authorization,
+    format_bytes,
+    is_target_authorized,
+    load_authorized_targets,
+    sanitize_filename,
     validate_cidr,
     validate_domain,
+    validate_ip,
+    validate_target,
     validate_url,
-    check_authorization,
-    load_authorized_targets,
-    is_target_authorized,
-    RateLimiter,
-    format_bytes,
-    sanitize_filename
 )
 
 
@@ -317,7 +316,7 @@ class TestSanitizeFilename:
 
     def test_sanitize_dangerous_chars(self):
         """Test sanitizing dangerous characters."""
-        filename = "test<>:\"/\\|?*.txt"
+        filename = 'test<>:"/\\|?*.txt'
         sanitized = sanitize_filename(filename)
 
         assert "<" not in sanitized

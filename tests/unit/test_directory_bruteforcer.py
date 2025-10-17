@@ -2,8 +2,8 @@
 Unit tests for web-security/directory_bruteforcer.py module.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
 from web_security.directory_bruteforcer import DirectoryBruteforcer
 
 
