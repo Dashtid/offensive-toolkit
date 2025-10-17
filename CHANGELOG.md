@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - pip 25.2 (GHSA-4xh5-x5gv-qwph: Symlink escape in sdist extraction)
   - requests 2.31.0 → 2.32.4 (GHSA-9wx4-h78v-vm56, GHSA-9hjg-9r4m-mvj7)
 
+### Fixed
+- **Security Vulnerabilities** (3 of 4 resolved):
+  - black upgraded to 25.9.0 (from 23.12.1) - Fixed PYSEC-2024-48 ReDoS vulnerability
+  - requests upgraded to 2.32.5 (from 2.31.0) - Fixed 2 security issues (GHSA-9wx4-h78v-vm56, GHSA-9hjg-9r4m-mvj7)
+  - pip 25.2 vulnerability remains (GHSA-4xh5-x5gv-qwph) - no fix available, planned for 25.3
+
+- **Test Fixes** (4 tests fixed):
+  - validate_cidr() now correctly rejects IP addresses without CIDR notation
+  - Wildcard domain matching (*.example.com) no longer matches root domain
+  - Port scanner validates target format before authorization check
+  - Test coverage improved to 8.88% (from 8.82%)
+
+### Changed
+- Test suite: 121 passing (from 117), 1 failed, 4 errors (Windows file locking in logger tests)
+
+
 - **Comprehensive Testing Infrastructure**:
   - Full pytest framework with 70% coverage minimum
   - 140+ unit tests for utils modules (logger, config, helpers)

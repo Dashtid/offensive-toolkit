@@ -106,6 +106,9 @@ def validate_cidr(cidr: str) -> bool:
         >>> validate_cidr("10.0.0.0/8")
         True
     """
+    # CIDR notation must contain a slash
+    if "/" not in cidr:
+        return False
     try:
         ipaddress.ip_network(cidr, strict=False)
         return True
@@ -286,7 +289,8 @@ def is_target_authorized(target: str, authorized_targets: list[str]) -> bool:
         # Domain wildcard match (*.example.com matches sub.example.com)
         if authorized.startswith("*."):
             domain_suffix = authorized[2:]
-            if target.endswith(domain_suffix):
+            # Wildcard should match subdomains only, not the root domain
+            if target.endswith(domain_suffix) and target != domain_suffix:
                 return True
 
         # Subdomain match (example.com matches sub.example.com)

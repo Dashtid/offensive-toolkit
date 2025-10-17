@@ -160,15 +160,15 @@ class PortScanner:
         Returns:
             Scan results dictionary
         """
+        # Validate target format first
+        if not validate_target(target, "auto"):
+            logger.error(f"Invalid target format: {target}")
+            return {"error": "Invalid target"}
+
         # Authorization check
         if not check_authorization(target, self.config):
             logger.error(f"Target {target} not authorized for testing")
             return {"error": "Not authorized"}
-
-        # Validate target format
-        if not validate_target(target, "auto"):
-            logger.error(f"Invalid target format: {target}")
-            return {"error": "Invalid target"}
 
         logger.info(f"Starting port scan against {target}")
         logger.info(f"[!] Ensure you have authorization to scan {target}")
