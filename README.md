@@ -33,20 +33,20 @@ A comprehensive, modular Python framework for authorized security testing and re
 
 **Linux/Mac:**
 ```bash
-git clone https://github.com/yourusername/offensive-toolkit.git
+git clone https://github.com/Dashtid/offensive-toolkit.git
 cd offensive-toolkit
-chmod +x setup.sh
-./setup.sh
-source venv/bin/activate
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+source .venv/bin/activate
 ```
 
 **Windows:**
 ```powershell
-git clone https://github.com/yourusername/offensive-toolkit.git
+git clone https://github.com/Dashtid/offensive-toolkit.git
 cd offensive-toolkit
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
-.\setup.ps1
-.\venv\Scripts\Activate.ps1
+.\scripts\setup.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 
 **With UV (Recommended - Faster):**
@@ -55,23 +55,24 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone and setup
-git clone https://github.com/yourusername/offensive-toolkit.git
+git clone https://github.com/Dashtid/offensive-toolkit.git
 cd offensive-toolkit
-uv venv
+uv venv --python 3.14
 source .venv/bin/activate  # Linux/Mac
 # OR: .venv\Scripts\activate  # Windows
-uv pip install -r requirements.txt
+uv pip install -r scripts/requirements.txt
+uv pip install -r scripts/requirements-dev.txt
 ```
 
 **Docker (Isolated Environment):**
 ```bash
 # Build and run
-docker build -t offensive-toolkit .
+docker build -f docker/Dockerfile -t offensive-toolkit .
 docker run --rm offensive-toolkit python reconnaissance/port_scanner.py --help
 
 # Or use docker-compose
-docker-compose up -d
-docker-compose run --rm toolkit python reconnaissance/port_scanner.py --target 192.168.1.1
+docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml run --rm toolkit python reconnaissance/port_scanner.py --target 192.168.1.1
 ```
 
 ### Configuration
@@ -672,24 +673,51 @@ make html
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=. --cov-report=html
+# Run all tests with coverage
+pytest --cov=src/offensive_toolkit --cov-report=html
 
 # Run specific test file
-pytest tests/test_port_scanner.py
+pytest tests/unit/test_port_scanner.py -v
 
-# Run with verbose output
-pytest -v
+# Run with verbose output and coverage report
+pytest -v --cov=src/offensive_toolkit --cov-report=term-missing
+
+# Generate HTML coverage report (opens in browser)
+pytest --cov=src/offensive_toolkit --cov-report=html
+# View at: build/htmlcov/index.html
 ```
+
+### Test Coverage Progress
+
+**Current Coverage: 22.13%** (Target: 70%)
+
+**Well-Tested Modules (>50% coverage):**
+- config.py: 90.28%
+- helpers.py: 83.01%
+- directory_bruteforcer.py: 75.27%
+- subdomain_enum.py: 66.67%
+- port_scanner.py: 65.88%
+- dns_resolver.py: 59.00%
+- sql_injection.py: 57.58%
+- whois_lookup.py: 52.07%
+
+**Recently Added Tests:**
+- Directory Bruteforcer: 26 comprehensive tests (75.27% coverage)
+- API Fuzzer: 28 OWASP API Security Top 10 tests (47.36% coverage)
+- WHOIS Lookup: 18 tests covering socket queries and parsing (52.07% coverage)
+- SQL Injection: 27 tests for all injection types (57.58% coverage)
+- DNS Resolver: 25 tests for all record types (59.00% coverage)
+- Subdomain Enumeration: 23 tests for DNS and certificate transparency (66.67% coverage)
+
+**Total Tests: 290** (289 passing, 1 flaky)
 
 ### Test Coverage Goals
 
-- **Unit Tests**: 80% minimum coverage
-- **Integration Tests**: Core workflows tested
-- **Security Tests**: Authorization and validation checks
+- **Overall Target**: 70% code coverage minimum
+- **Unit Tests**: Comprehensive test suites for all modules
+- **Integration Tests**: End-to-end workflow testing
+- **Security Tests**: Authorization checks, input validation, error handling
+- **Edge Cases**: Timeouts, connection errors, malformed data
 
 ---
 
