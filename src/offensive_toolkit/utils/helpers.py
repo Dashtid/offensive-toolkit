@@ -182,7 +182,7 @@ def check_authorization(
         [?] Do you have authorization to test this target? (yes/no): yes
         True
     """
-    from utils.config import load_config
+    from offensive_toolkit.utils.config import load_config
 
     if config is None:
         config = load_config()

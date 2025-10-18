@@ -93,5 +93,5 @@ graphql-core>=3.2.0
 # tiktoken>=0.6.0
 
 # Performance and Concurrency
-asyncio>=3.4.3
-concurrent-futures>=3.1.0
+# asyncio and concurrent.futures are built into Python 3.14+
+# No external packages needed

@@ -88,7 +88,7 @@ memory-profiler>=0.61.0          # Memory usage profiler
 # Docker Development (Optional)
 # ============================================================================
 docker>=7.0.0                    # Docker SDK for Python
-docker-compose>=1.29.2           # Docker Compose Python library
+# docker-compose library is deprecated, use docker-compose CLI directly
 
 # ============================================================================
 # Code Coverage & Reporting
