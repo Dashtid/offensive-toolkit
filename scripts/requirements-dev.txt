@@ -1,0 +1,125 @@
+# Offensive Security Toolkit - Development Dependencies
+# Install with: pip install -r requirements-dev.txt
+# Or with UV: uv pip install -r requirements-dev.txt
+
+# Include production dependencies
+-r requirements.txt
+
+# ============================================================================
+# Testing Framework
+# ============================================================================
+pytest>=8.0.0                    # Testing framework
+pytest-cov>=4.1.0                # Coverage plugin for pytest
+pytest-asyncio>=0.23.0           # Async test support
+pytest-mock>=3.12.0              # Mocking plugin
+pytest-xdist>=3.5.0              # Parallel test execution
+pytest-timeout>=2.2.0            # Test timeout support
+pytest-randomly>=3.15.0          # Randomize test order
+coverage[toml]>=7.4.0            # Coverage measurement
+
+# ============================================================================
+# Code Quality & Linting (Modern: Ruff)
+# ============================================================================
+ruff>=0.8.0                      # Fast Python linter & formatter (replaces Black, Flake8, isort)
+
+# Alternative: Traditional tools (uncomment if not using Ruff)
+# black>=24.1.0                  # Code formatter
+# flake8>=7.0.0                  # Style guide enforcement
+# isort>=5.13.0                  # Import sorting
+# pylint>=3.0.0                  # Code analysis
+
+# ============================================================================
+# Type Checking
+# ============================================================================
+mypy>=1.8.0                      # Static type checker
+types-requests>=2.31.0           # Type stubs for requests
+types-PyYAML>=6.0.0              # Type stubs for PyYAML
+
+# ============================================================================
+# Security Scanning
+# ============================================================================
+bandit>=1.7.6                    # Security issue scanner
+safety>=3.0.0                    # Dependency vulnerability scanner
+pip-audit>=2.7.0                 # Audit Python packages for known vulnerabilities
+
+# ============================================================================
+# Pre-commit Framework
+# ============================================================================
+pre-commit>=3.6.0                # Git hook framework
+
+# ============================================================================
+# Documentation
+# ============================================================================
+sphinx>=7.2.0                    # Documentation generator
+sphinx-rtd-theme>=2.0.0          # ReadTheDocs theme
+sphinx-autodoc-typehints>=1.25.0 # Type hints in docs
+myst-parser>=2.0.0               # Markdown support for Sphinx
+
+# ============================================================================
+# Development Utilities
+# ============================================================================
+ipython>=8.20.0                  # Enhanced Python shell
+ipdb>=0.13.13                    # IPython debugger
+rich>=13.7.0                     # Beautiful terminal output (already in main requirements)
+watchdog>=4.0.0                  # File system event monitoring
+python-dotenv>=1.0.0             # Environment variable management (already in main requirements)
+
+# ============================================================================
+# Build & Packaging
+# ============================================================================
+build>=1.0.0                     # PEP 517 build frontend
+twine>=4.0.0                     # PyPI upload tool
+setuptools>=69.0.0               # Package installer
+wheel>=0.42.0                    # Wheel distribution format
+
+# ============================================================================
+# Git & Version Control
+# ============================================================================
+gitpython>=3.1.41                # Git interface
+pre-commit-hooks>=4.5.0          # Collection of pre-commit hooks
+
+# ============================================================================
+# Performance Profiling
+# ============================================================================
+py-spy>=0.3.14                   # Sampling profiler
+memory-profiler>=0.61.0          # Memory usage profiler
+
+# ============================================================================
+# Docker Development (Optional)
+# ============================================================================
+docker>=7.0.0                    # Docker SDK for Python
+# docker-compose library is deprecated, use docker-compose CLI directly
+
+# ============================================================================
+# Code Coverage & Reporting
+# ============================================================================
+codecov>=2.1.13                  # Codecov integration
+
+# ============================================================================
+# Development Notes
+# ============================================================================
+# Installation:
+#   pip install -r requirements-dev.txt
+#   OR (recommended):
+#   uv pip install -r requirements-dev.txt
+#
+# Pre-commit setup:
+#   pre-commit install
+#   pre-commit run --all-files
+#
+# Running tests:
+#   pytest
+#   pytest --cov=. --cov-report=html
+#   pytest -n auto  # parallel execution
+#
+# Linting (Ruff):
+#   ruff check .
+#   ruff format .
+#
+# Type checking:
+#   mypy .
+#
+# Security scanning:
+#   bandit -r .
+#   safety check
+#   pip-audit

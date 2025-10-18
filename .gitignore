@@ -36,7 +36,8 @@ venv.bak/
 
 # Virtual Environment Artifacts (Windows/Git Bash)
 Lib/
-Scripts/
+.venv/Scripts/
+venv/Scripts/
 Include/
 pyvenv.cfg
 .Python
