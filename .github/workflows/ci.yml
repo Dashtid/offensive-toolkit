@@ -161,7 +161,7 @@ jobs:
             -v
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == env.PYTHON_VERSION
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -169,6 +169,7 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+        continue-on-error: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
