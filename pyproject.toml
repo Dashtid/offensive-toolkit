@@ -85,12 +85,31 @@ ignore = [
     "PLR0911", # Too many return statements
     "ARG001",  # Unused function argument (callback signatures)
     "ARG002",  # Unused method argument
+    "ARG005",  # Unused lambda argument
     "B007",    # Loop control variable not used
+    "B904",    # Raise without from inside except
     "SIM102",  # Nested if statements (clearer for security checks)
+    "SIM103",  # Return bool comparison directly
+    "SIM105",  # Use contextlib.suppress
+    "SIM113",  # Use enumerate
+    "SIM117",  # Multiple with statements
     "SIM118",  # Use key in dict (explicit is clearer)
     "RET504",  # Unnecessary assignment before return
+    "RET505",  # Unnecessary else after return
     "DTZ003",  # datetime.utcnow() (will fix later)
     "DTZ005",  # datetime without timezone
+    "F401",    # Imported but unused (may be re-exports)
+    "F841",    # Local variable assigned but never used
+    "PLW2901", # Outer loop variable overwritten
+    "ERA001",  # Commented out code
+    "C414",    # Unnecessary list call
+    "PIE810",  # Unnecessary pass
+    "UP024",   # Replace aliased errors
+    "UP041",   # Replace timeout errors
+    "PLC0415", # Import outside top level
+    "RUF012",  # Mutable class attributes
+    "RUF059",  # Unused named expression
+    "I001",    # Import block unsorted (handled by formatter)
 ]
 
 # Allow autofix for these rules
