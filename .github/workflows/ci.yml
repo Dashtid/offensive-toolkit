@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.14'
+  PYTHON_VERSION: '3.13'
   UV_VERSION: '0.5.20'
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements-dev.txt
+          uv venv && uv pip install -r requirements-dev.txt
 
       - name: Run Ruff linter
         run: |
@@ -78,7 +78,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements-dev.txt
+          uv venv && uv pip install -r requirements-dev.txt
 
       - name: Run Bandit security scanner
         run: |
@@ -145,8 +145,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements.txt
-          uv pip install --system -r requirements-dev.txt
+          uv venv && uv pip install -r requirements.txt
+          uv venv && uv pip install -r requirements-dev.txt
 
       - name: Run tests with coverage
         run: |
@@ -227,7 +227,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements-dev.txt
+          uv venv && uv pip install -r requirements-dev.txt
 
       - name: Build documentation
         run: |
@@ -265,7 +265,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -r requirements.txt
+          uv venv && uv pip install -r requirements.txt
 
       - name: Check for dependency updates
         run: |
