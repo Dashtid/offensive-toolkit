@@ -188,7 +188,7 @@ markers = [
 # Coverage Configuration
 # ==============================================================================
 [tool.coverage.run]
-source = ["."]
+source = ["src"]
 omit = [
     "*/tests/*",
     "*/venv/*",
