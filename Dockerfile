@@ -32,6 +32,9 @@ COPY pyproject.toml .
 # Install the package
 RUN pip install --no-cache-dir -e .
 
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R toolkit:toolkit /app/logs && chmod 755 /app/logs
+
 # Switch to non-root user
 USER toolkit
 
